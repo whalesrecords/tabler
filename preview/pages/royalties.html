@@ -1,0 +1,98 @@
+---
+title: Analyse CSV
+page-header: Analyse CSV
+page-libs: [lists]
+menu: base.royalties
+layout: default
+---
+
+<div class="card">
+	<div class="card-header">
+		<h3 class="card-title">Import CSV</h3>
+	</div>
+	<div class="card-body">
+		<div class="row g-3">
+			<div class="col-md-6">
+				<div class="form-group">
+					<label class="form-label">Template</label>
+					<select class="form-select" id="templateSelect">
+						<option value="tunecore">Tunecore</option>
+						<option value="believe_uk">BELIEVE UK</option>
+						<option value="believe">BELIEVE</option>
+						<option value="tunecore_plus">Tunecore +</option>
+						<option value="tunecore_real">TuneCore Real</option>
+						<option value="dashgo">DashGo</option>
+					</select>
+				</div>
+			</div>
+			<div class="col-md-6">
+				<div class="form-group">
+					<label class="form-label">Fichiers CSV</label>
+					<input type="file" class="form-control" id="csvFile" accept=".csv" multiple>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="mt-3" id="results">
+	<!-- Boutons de contrôle -->
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<div class="btn-group" role="group" aria-label="Affichage des résultats">
+			<input type="radio" class="btn-check" name="viewType" id="viewArtist" value="artist" checked>
+			<label class="btn btn-outline-primary" for="viewArtist">Par Artiste</label>
+			
+			<input type="radio" class="btn-check" name="viewType" value="period" id="viewPeriod">
+			<label class="btn btn-outline-primary" for="viewPeriod">Par Période</label>
+			
+			<input type="radio" class="btn-check" name="viewType" value="track" id="viewTrack">
+			<label class="btn btn-outline-primary" for="viewTrack">Par Track</label>
+		</div>
+		
+		<button class="btn btn-success" id="exportBtn">
+			<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+				<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+				<path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
+				<path d="M7 11l5 5l5 -5"></path>
+				<path d="M12 4l0 12"></path>
+			</svg>
+			Exporter CSV
+		</button>
+	</div>
+
+	<!-- Par Artiste -->
+	<div class="card mb-3" id="artistView">
+		<div class="card-header">
+			<h3 class="card-title">Revenus par Artiste</h3>
+		</div>
+		<div class="card-body" id="artist-results">
+			<div class="row row-cards" id="artist-cards">
+			</div>
+		</div>
+	</div>
+
+	<!-- Par Période -->
+	<div class="card mb-3" id="periodView" style="display: none;">
+		<div class="card-header">
+			<h3 class="card-title">Revenus par Période</h3>
+		</div>
+		<div class="card-body" id="period-results">
+			<div class="row row-cards" id="period-cards">
+			</div>
+		</div>
+	</div>
+
+	<!-- Par Track -->
+	<div class="card mb-3" id="trackView" style="display: none;">
+		<div class="card-header">
+			<h3 class="card-title">Revenus par Track</h3>
+		</div>
+		<div class="card-body" id="track-results">
+			<div class="row row-cards" id="track-cards">
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Include the CSV processor script -->
+<script src="/static/js/csv-processor.js"></script>
