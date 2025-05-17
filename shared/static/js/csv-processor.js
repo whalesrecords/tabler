@@ -141,23 +141,21 @@ const templates = {
     }
   },
   bandcamp: {
-    date_column: "Date",
-    track_column: "Item",
-    artist_column: "Artist",
-    upc_column: "SKU",
-    revenue_column: "Net Amount (EUR)",
-    source_column: "Type",
+    date_column: "date",
+    track_column: "item name",
+    artist_column: "artist",
+    upc_column: "upc",
+    revenue_column: "net amount",
+    source_column: "Item type",
     currency: "EUR",
     source: "Bandcamp",
     mapping: {
-      "Date": 0,
-      "Type": 1,
-      "Item": 2,
-      "Artist": 3,
-      "SKU": 4,
-      "Net Amount (USD)": 5,
-      "Exchange Rate": 6,
-      "Net Amount (EUR)": 7
+      "date": 0,
+      "artist": 1,
+      "item name": 2,
+      "upc": 3,
+      "net amount": 4,
+      "Item type": 5
     }
   }
 };
@@ -165,7 +163,69 @@ const templates = {
 let currentData = null;
 let currentTemplate = null;
 
+// Fonctions de gestion de la persistance
+function saveToLocalStorage(fileData) {
+  try {
+    if (!fileData || !fileData.fileName || !fileData.template) {
+      throw new Error('Données de fichier invalides');
+    }
+
+    // Récupérer les données existantes
+    let storedFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+    
+    // Ajouter les métadonnées
+    const enhancedFileData = {
+      ...fileData,
+      fileId: generateFileId(fileData, fileData.template),
+      importDate: new Date().toISOString()
+    };
+    
+    // Ajouter le nouveau fichier
+    storedFiles.push(enhancedFileData);
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('csvFiles', JSON.stringify(storedFiles));
+    
+    // Mettre à jour l'affichage de la liste
+    displayStoredFiles();
+    
+    return true;
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde dans le localStorage:', error);
+    console.log('Données du fichier:', fileData);
+    return false;
+  }
+}
+
+function getStoredData() {
+  try {
+    return JSON.parse(localStorage.getItem('csvFiles') || '[]');
+  } catch (error) {
+    console.error('Erreur lors de la lecture du localStorage:', error);
+    return [];
+  }
+}
+
+function isFileAlreadyImported(newFileData) {
+  const storedFiles = getStoredData();
+  
+  // Vérifier si un fichier avec le même contenu existe déjà
+  return storedFiles.some(storedFile => {
+    // Comparer les propriétés pertinentes
+    return (
+      storedFile.fileName === newFileData.fileName &&
+      storedFile.fileSize === newFileData.fileSize &&
+      storedFile.lastModified === newFileData.lastModified
+    );
+  });
+}
+
+function getStoredDataForCharts() {
+  return getStoredData();
+}
+
 function detectDelimiter(text) {
+  console.log('Detecting delimiter for text starting with:', text.substring(0, 100));
   const delimiters = [',', ';', '\t', '|'];
   const firstLines = text.split('\n').slice(0, 5);
   const scores = {};
@@ -187,13 +247,119 @@ function detectDelimiter(text) {
     });
   });
   
-  return Object.entries(scores).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+  console.log('Delimiter scores:', scores);
+  const detectedDelimiter = Object.entries(scores).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+  console.log('Selected delimiter:', detectedDelimiter);
+  return detectedDelimiter;
 }
 
-function getQuarter(dateStr) {
-  const date = new Date(dateStr);
-  const quarter = Math.floor((date.getMonth() + 3) / 3);
-  return `Q${quarter} ${date.getFullYear()}`;
+function parseBandcampDate(dateStr) {
+  try {
+    console.log('Parsing Bandcamp date:', dateStr);
+    
+    if (!dateStr || typeof dateStr !== 'string') {
+      throw new Error('Invalid date string provided');
+    }
+
+    // Format attendu: MM/DD/YY HH:MMam/pm
+    // Exemple: 4/12/14 5:21pm
+    const [datePart, timePart] = dateStr.trim().split(' ');
+    
+    if (!datePart || !timePart) {
+      throw new Error('Could not split date and time parts');
+    }
+    
+    console.log('Date parts:', { datePart, timePart });
+    
+    // Parse date part
+    const [month, day, year] = datePart.split('/').map(num => parseInt(num, 10));
+    if (isNaN(month) || isNaN(day) || isNaN(year)) {
+      throw new Error('Invalid date numbers');
+    }
+    console.log('Date components:', { month, day, year });
+    
+    // Parse time part
+    const timeMatch = timePart.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
+    if (!timeMatch) {
+      throw new Error(`Invalid time format: ${timePart}`);
+    }
+    
+    let [_, hours, minutes, ampm] = timeMatch;
+    hours = parseInt(hours, 10);
+    minutes = parseInt(minutes, 10);
+    
+    if (isNaN(hours) || isNaN(minutes) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+      throw new Error('Invalid hours or minutes');
+    }
+    
+    console.log('Time components:', { hours, minutes, ampm });
+    
+    // Convert to 24h format
+    if (ampm.toLowerCase() === 'pm' && hours < 12) hours += 12;
+    if (ampm.toLowerCase() === 'am' && hours === 12) hours = 0;
+    
+    // Convert 2-digit year to full year
+    const fullYear = year < 50 ? 2000 + year : 1900 + year;
+    
+    console.log('Final components:', {
+      year: fullYear,
+      month: month - 1, // JS months are 0-based
+      day,
+      hours,
+      minutes
+    });
+    
+    const date = new Date(fullYear, month - 1, day, hours, minutes);
+    
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid date created');
+    }
+    
+    console.log('Final parsed date:', date);
+    return date;
+  } catch (error) {
+    console.error('Error parsing Bandcamp date:', error.message);
+    console.error('Original date string:', dateStr);
+    throw error; // Let getQuarter handle the error
+  }
+}
+
+function getQuarter(dateStr, template) {
+  try {
+    console.log('getQuarter input:', {
+      dateStr: dateStr,
+      template: template ? template.source : 'no template'
+    });
+
+    let date;
+    if (template && template.source === 'Bandcamp') {
+      console.log('Attempting to parse Bandcamp date');
+      date = parseBandcampDate(dateStr);
+    } else {
+      console.log('Using default date parsing');
+      date = new Date(dateStr);
+    }
+
+    console.log('Parsed date result:', date);
+    
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date parsing result:', {
+        originalDate: dateStr,
+        parsedDate: date,
+        isValidDate: !isNaN(date.getTime())
+      });
+      return 'Unknown Quarter';
+    }
+    
+    const quarter = Math.floor((date.getMonth() + 3) / 3);
+    const result = `Q${quarter} ${date.getFullYear()}`;
+    console.log('Final quarter result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error in getQuarter:', error);
+    console.error('Input was:', { dateStr, template });
+    return 'Unknown Quarter';
+  }
 }
 
 function formatMoney(amount) {
@@ -233,114 +399,244 @@ function parseAmount(value) {
     return number;
 }
 
-function parseCSV(text) {
-  const delimiter = detectDelimiter(text);
-  console.log('Detected delimiter:', delimiter);
-  const lines = text.split('\n').filter(line => line.trim());
-  
-  // Get headers from first line
-  const headers = lines[0].split(delimiter).map(header => header.trim().replace(/^"(.*)"$/, '$1'));
-  console.log('Headers:', headers);
-  
-  // Process data lines (skip header)
-  return lines.slice(1).map(line => {
-    const values = [];
-    let value = '';
-    let inQuotes = false;
+function parseCSV(text, template) {
+  try {
+    console.log('Starting CSV parsing with template:', template);
+    const delimiter = detectDelimiter(text);
+    console.log('Detected delimiter:', delimiter);
     
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          value += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === delimiter && !inQuotes) {
-        values.push(value.trim());
-        value = '';
-      } else {
-        value += char;
-      }
-    }
+    // Afficher les premières lignes du fichier
+    const firstFewLines = text.split('\n').slice(0, 5);
+    console.log('First few lines of the file:', firstFewLines);
     
-    values.push(value.trim());
+    const lines = text.split('\n').filter(line => line.trim());
+    console.log('Number of lines after filtering:', lines.length);
     
-    const templateType = document.getElementById('templateSelect').value;
-    const template = templates[templateType];
-    
-    if (!template) {
-      console.error('Template or mapping not found');
-      return {};
-    }
-
-    // Map values to their corresponding headers
-    const result = {};
-    headers.forEach((header, index) => {
-      result[header] = values[index] || '';
+    // Get headers from first line
+    const headers = lines[0].split(delimiter).map(header => header.trim().replace(/^"(.*)"$/, '$1'));
+    console.log('Headers found:', headers);
+    console.log('Expected headers from template:', {
+      date: template.date_column,
+      track: template.track_column,
+      artist: template.artist_column,
+      upc: template.upc_column,
+      revenue: template.revenue_column
     });
     
-    return result;
-  });
+    // Vérifier si les colonnes requises existent
+    const requiredColumns = [
+      template.date_column,
+      template.track_column,
+      template.artist_column,
+      template.upc_column,
+      template.revenue_column
+    ];
+    
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      console.error('Missing required columns:', missingColumns);
+      console.error('Available columns:', headers);
+      throw new Error(`Colonnes manquantes dans le fichier CSV: ${missingColumns.join(', ')}`);
+    }
+
+    // Process data lines (skip header)
+    const parsedData = lines.slice(1).map((line, index) => {
+      try {
+        const values = [];
+        let value = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              value += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === delimiter && !inQuotes) {
+            values.push(value.trim());
+            value = '';
+          } else {
+            value += char;
+          }
+        }
+        values.push(value.trim());
+
+        // Map values to their corresponding headers
+        const result = {};
+        headers.forEach((header, index) => {
+          result[header] = values[index] || '';
+        });
+        
+        // Log les premières lignes pour débogage
+        if (index < 2) {
+          console.log(`Parsed row ${index + 1}:`, result);
+          console.log('Required values:', {
+            date: result[template.date_column],
+            track: result[template.track_column],
+            artist: result[template.artist_column],
+            upc: result[template.upc_column],
+            revenue: result[template.revenue_column]
+          });
+        }
+        
+        return result;
+      } catch (error) {
+        console.error(`Error parsing line ${index + 1}:`, line);
+        console.error('Error details:', error);
+        throw error;
+      }
+    });
+
+    console.log(`Successfully parsed ${parsedData.length} rows`);
+    return parsedData;
+  } catch (error) {
+    console.error('Error in parseCSV:', error);
+    console.error('Template:', template);
+    throw error;
+  }
 }
 
 function aggregateData(data, template) {
+  console.log('Starting aggregation with template:', template);
+  
   const byArtist = {};
   const byPeriod = {};
   const byTrack = {};
+  const bySource = {};
+  let totalRevenue = 0;
 
-  data.forEach(row => {
-    const artist = row[template.artist_column] || 'Unknown Artist';
-    const track = row[template.track_column] || 'Unknown Track';
-    const period = getQuarter(row[template.date_column]);
-    const revenue = parseFloat(row[template.revenue_column] || '0');
+  data.forEach((row, index) => {
+    try {
+      const artist = row[template.artist_column] || 'Unknown Artist';
+      const track = row[template.track_column] || 'Unknown Track';
+      const period = getQuarter(row[template.date_column], template);
+      const revenue = parseAmount(row[template.revenue_column] || '0');
+      const source = template.source || 'Unknown Source';
 
-    // Par artiste
-    if (!byArtist[artist]) {
-      byArtist[artist] = { total: 0, tracks: {}, periods: {} };
-    }
-    byArtist[artist].total += revenue;
-    if (!byArtist[artist].tracks[track]) {
-      byArtist[artist].tracks[track] = 0;
-    }
-    byArtist[artist].tracks[track] += revenue;
-    if (!byArtist[artist].periods[period]) {
-      byArtist[artist].periods[period] = 0;
-    }
-    byArtist[artist].periods[period] += revenue;
+      console.log(`Processing row ${index}:`, {
+        artist,
+        track,
+        period,
+        revenue,
+        source,
+        rawRow: row
+      });
 
-    // Par période
-    if (!byPeriod[period]) {
-      byPeriod[period] = { total: 0, artists: {}, tracks: {} };
-    }
-    byPeriod[period].total += revenue;
-    if (!byPeriod[period].artists[artist]) {
-      byPeriod[period].artists[artist] = 0;
-    }
-    byPeriod[period].artists[artist] += revenue;
-    if (!byPeriod[period].tracks[track]) {
-      byPeriod[period].tracks[track] = 0;
-    }
-    byPeriod[period].tracks[track] += revenue;
+      // Incrémenter le revenu total
+      totalRevenue += revenue;
 
-    // Par track
-    if (!byTrack[track]) {
-      byTrack[track] = { total: 0, artists: {}, periods: {} };
+      // Par source
+      if (!bySource[source]) {
+        bySource[source] = {
+          total: 0,
+          periods: {},
+          artists: {},
+          tracks: {}
+        };
+      }
+      bySource[source].total += revenue;
+      
+      if (!bySource[source].periods[period]) {
+        bySource[source].periods[period] = 0;
+      }
+      bySource[source].periods[period] += revenue;
+      
+      if (!bySource[source].artists[artist]) {
+        bySource[source].artists[artist] = 0;
+      }
+      bySource[source].artists[artist] += revenue;
+      
+      if (!bySource[source].tracks[track]) {
+        bySource[source].tracks[track] = 0;
+      }
+      bySource[source].tracks[track] += revenue;
+
+      // Par artiste
+      if (!byArtist[artist]) {
+        byArtist[artist] = {
+          total: 0,
+          tracks: {},
+          periods: {},
+          sources: {}
+        };
+      }
+      byArtist[artist].total += revenue;
+      
+      if (!byArtist[artist].tracks[track]) {
+        byArtist[artist].tracks[track] = 0;
+      }
+      byArtist[artist].tracks[track] += revenue;
+      
+      if (!byArtist[artist].periods[period]) {
+        byArtist[artist].periods[period] = 0;
+      }
+      byArtist[artist].periods[period] += revenue;
+      
+      if (!byArtist[artist].sources[source]) {
+        byArtist[artist].sources[source] = 0;
+      }
+      byArtist[artist].sources[source] += revenue;
+
+      // Par période
+      if (!byPeriod[period]) {
+        byPeriod[period] = {
+          total: 0,
+          artists: {},
+          tracks: {},
+          sources: {}
+        };
+      }
+      byPeriod[period].total += revenue;
+      
+      if (!byPeriod[period].artists[artist]) {
+        byPeriod[period].artists[artist] = 0;
+      }
+      byPeriod[period].artists[artist] += revenue;
+      
+      if (!byPeriod[period].tracks[track]) {
+        byPeriod[period].tracks[track] = 0;
+      }
+      byPeriod[period].tracks[track] += revenue;
+      
+      if (!byPeriod[period].sources[source]) {
+        byPeriod[period].sources[source] = 0;
+      }
+      byPeriod[period].sources[source] += revenue;
+
+      // Par track
+      if (!byTrack[track]) {
+        byTrack[track] = {
+          total: 0,
+          artist: artist,
+          periods: {},
+          sources: {}
+        };
+      }
+      byTrack[track].total += revenue;
+      
+      if (!byTrack[track].periods[period]) {
+        byTrack[track].periods[period] = 0;
+      }
+      byTrack[track].periods[period] += revenue;
+      
+      if (!byTrack[track].sources[source]) {
+        byTrack[track].sources[source] = 0;
+      }
+      byTrack[track].sources[source] += revenue;
+    } catch (error) {
+      console.error(`Error processing row ${index}:`, error);
+      console.error('Row data:', row);
+      console.error('Template:', template);
     }
-    byTrack[track].total += revenue;
-    if (!byTrack[track].artists[artist]) {
-      byTrack[track].artists[artist] = 0;
-    }
-    byTrack[track].artists[artist] += revenue;
-    if (!byTrack[track].periods[period]) {
-      byTrack[track].periods[period] = 0;
-    }
-    byTrack[track].periods[period] += revenue;
   });
 
-  return { byArtist, byPeriod, byTrack };
+  const result = { byArtist, byPeriod, byTrack, bySource, totalRevenue };
+  console.log('Aggregation result:', result);
+  return result;
 }
 
 function createArtistCard(artist, data) {
@@ -467,15 +763,52 @@ function createTrackCard(track, data) {
 }
 
 async function processFiles(files, template) {
-  const allData = [];
-  
   for (const file of files) {
-    const text = await readFileAsync(file);
-    const data = parseCSV(text);
-    allData.push(...data);
+    const fileData = {
+      fileName: file.name,
+      fileSize: file.size,
+      lastModified: file.lastModified,
+      template: template
+    };
+
+    try {
+      console.log('Processing file:', file.name);
+      console.log('Using template:', template);
+      
+      const content = await readFileAsync(file);
+      console.log('File content first 200 chars:', content.substring(0, 200));
+      
+      const parsedData = parseCSV(content, template);
+      console.log('Parsed data first row:', parsedData[0]);
+      
+      if (parsedData.length === 0) {
+        alert('Le fichier est vide ou mal formaté.');
+        continue;
+      }
+
+      // Agréger les données
+      const aggregatedData = aggregateData(parsedData, template);
+      console.log('Aggregated data:', aggregatedData);
+
+      // Ajouter les données agrégées au fileData
+      fileData.data = aggregatedData;
+      
+      // Sauvegarder dans le localStorage
+      if (saveToLocalStorage(fileData)) {
+        console.log(`Fichier "${file.name}" importé et sauvegardé avec succès.`);
+      } else {
+        console.error(`Erreur lors de la sauvegarde du fichier "${file.name}"`);
+      }
+      
+      // Mettre à jour l'interface
+      updateAllViews();
+    } catch (error) {
+      console.error(`Erreur lors du traitement du fichier "${file.name}":`, error);
+      console.error('Template utilisé:', template);
+      console.error('Stack trace:', error.stack);
+      alert(`Erreur lors du traitement du fichier "${file.name}". Veuillez vérifier le format du fichier.`);
+    }
   }
-  
-  return allData;
 }
 
 function readFileAsync(file) {
@@ -514,7 +847,7 @@ function exportToCSV(data, template) {
         row[template.artist_column] === artist && 
         row[template.track_column] === track
       ).forEach(row => {
-        const period = getQuarter(row[template.date_column]);
+        const period = getQuarter(row[template.date_column], template);
         const revenue = parseFloat(row[template.revenue_column] || '0');
         totalRevenue += revenue;
         
@@ -552,483 +885,595 @@ function exportToCSV(data, template) {
 }
 
 function updateView(viewType) {
-  document.getElementById('artistView').style.display = viewType === 'artist' ? 'block' : 'none';
-  document.getElementById('periodView').style.display = viewType === 'period' ? 'block' : 'none';
-  document.getElementById('trackView').style.display = viewType === 'track' ? 'block' : 'none';
-}
-
-// Initialize everything when DOM is loaded
-document.addEventListener("DOMContentLoaded", function() {
-  const importForms = document.getElementById('importForms');
-  const addImportBtn = document.getElementById('addImportBtn');
-  const exportBtn = document.getElementById('exportBtn');
+  console.log('Updating view to:', viewType);
   
-  // Store all imported data
-  let globalImportedData = {
-    artists: {},
-    periods: {},
-    tracks: {}
+  // Check if we're on the import page
+  const isImportPage = !document.documentElement.dataset.hideImport;
+  
+  if (isImportPage) {
+    // Cacher toutes les vues
+    document.getElementById('artistView').style.display = 'none';
+    document.getElementById('periodView').style.display = 'none';
+    document.getElementById('trackView').style.display = 'none';
+    
+    // Afficher la vue sélectionnée
+    document.getElementById(viewType + 'View').style.display = 'block';
+  }
+  
+  // Récupérer les données
+  const storedFiles = getStoredData();
+  console.log('Stored files:', storedFiles);
+  
+  // Agréger les données
+  const aggregatedData = {
+    byPeriod: {},
+    byArtist: {},
+    byTrack: {},
+    bySource: {},
+    totalRevenue: 0
   };
 
-  // Initialize the first import form
-  initializeImportForm(importForms.querySelector('.import-form'));
-
-  // Add new import form
-  addImportBtn.addEventListener('click', function() {
-    const newForm = importForms.querySelector('.import-form').cloneNode(true);
-    newForm.querySelector('.csv-file').value = '';
-    newForm.querySelector('.remove-import').style.display = 'block';
-    initializeImportForm(newForm);
-    importForms.appendChild(newForm);
+  // Fusionner les données de tous les fichiers
+  storedFiles.forEach(fileData => {
+    if (fileData.data) {
+      console.log('Processing file data:', fileData);
+      mergeObjects(aggregatedData, fileData.data);
+    }
   });
 
-  // Handle view type changes
-  document.querySelectorAll('input[name="viewType"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-      updateView(this.value);
-    });
-  });
+  console.log('Aggregated data:', aggregatedData);
 
-  function initializeImportForm(formElement) {
-    const removeBtn = formElement.querySelector('.remove-import');
-    const fileInput = formElement.querySelector('.csv-file');
-    const templateSelect = formElement.querySelector('.template-select');
+  if (isImportPage) {
+    // Vider les conteneurs
+    document.getElementById('artist-cards').innerHTML = '';
+    document.getElementById('period-cards').innerHTML = '';
+    document.getElementById('track-cards').innerHTML = '';
 
-    if (removeBtn) {
-      removeBtn.addEventListener('click', function() {
-        formElement.remove();
-      });
-    }
-
-    fileInput.addEventListener('change', async function() {
-      const files = this.files;
-      const template = templateSelect.value;
-      
-      for (let file of files) {
-        try {
-          const data = await processCSV(file, template);
-          mergeData(data);
-          updateAllViews();
-        } catch (error) {
-          console.error('Error processing file:', error);
-          alert('Erreur lors du traitement du fichier: ' + error.message);
-        }
-      }
-    });
-  }
-
-  async function processCSV(file, template) {
-    const text = await file.text();
-    const delimiter = detectDelimiter(text);
-    console.log('Detected delimiter:', delimiter);
-    
-    const lines = text.split('\n').map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"(.*)"$/, '$1')));
-    const headers = lines[0].map(header => header.trim());
-    
-    console.log('CSV Headers (raw):', lines[0]);
-    console.log('CSV Headers (processed):', headers);
-    
-    // Log des premières lignes pour debug
-    console.log('First few rows:', lines.slice(1, 3));
-    
-    const data = {
-        artists: {},
-        periods: {},
-        tracks: {}
-    };
-
-    // Skip header row
-    for (let i = 1; i < lines.length; i++) {
-        if (lines[i].length !== headers.length || !lines[i].some(cell => cell.trim())) continue;
-        
-        const row = {};
-        headers.forEach((header, index) => {
-            row[header] = lines[i][index];
-        });
-
-        console.log(`Processing row ${i}:`, row);
-
-        // Process based on template
-        switch (template.toLowerCase()) {
-            case 'tunecore':
-                processTunecoreRow(row, data);
-                break;
-            case 'bandcamp':
-                processBandcampRow(row, data);
-                break;
-            case 'believe':
-            case 'believe_uk':
-                processBelieveRow(row, data);
-                break;
-            case 'dashgo':
-                processDashgoRow(row, data);
-                break;
-            default:
-                // Essayer de détecter automatiquement le template basé sur les en-têtes
-                if (headers.includes('Transaction Date') && headers.includes('Store')) {
-                    console.log('Détection automatique: DashGo détecté');
-                    processDashgoRow(row, data);
-                } else if (headers.includes('Artist Name') && headers.includes('Song Title')) {
-                    console.log('Détection automatique: Tunecore détecté');
-                    processTunecoreRow(row, data);
-                } else if (headers.some(h => ['Item type', 'Net revenue', 'Artist Name'].includes(h))) {
-                    console.log('Détection automatique: Bandcamp détecté');
-                    processBandcampRow(row, data);
-                } else if (headers.includes('Net Amount')) {
-                    console.log('Détection automatique: Believe détecté');
-                    processBelieveRow(row, data);
-                } else {
-                    console.warn('Template non reconnu:', template, 'Headers:', headers);
-                }
-        }
-    }
-
-    return data;
-  }
-
-  function processTunecoreRow(row, data) {
-    const artist = row['Artist Name'] || row['Artist'] || row['ARTIST'] || row['ARTIST NAME'] || 'Unknown Artist';
-    const track = row['Song Title'] || row['Track'] || row['SONG TITLE'] || row['TRACK'] || 'Unknown Track';
-    const period = row['Sale Month'] || row['Sales Period'] || row['Period'] || row['PERIOD'] || 'Unknown Period';
-    const revenue = parseAmount(row['Net Revenue'] || row['Revenue'] || row['NET REVENUE'] || row['REVENUE'] || row['Total Earned'] || row['TOTAL EARNED'] || '0');
-    
-    console.log('Tunecore Processing:', { artist, track, period, revenue, originalValue: row['Net Revenue'] || row['Revenue'] || row['NET REVENUE'] || row['REVENUE'] || row['Total Earned'] || row['TOTAL EARNED'] });
-    updateDataStructure(data, artist, track, period, revenue, 'Tunecore');
-  }
-
-  function processBandcampRow(row, data) {
-    // Log complet des données pour debug
-    console.log('Bandcamp Raw Row:', row);
-    console.log('Bandcamp Available Headers:', Object.keys(row));
-
-    // Vérification des colonnes Bandcamp avec les noms de colonnes corrects
-    const possibleArtistColumns = ['Artist name', 'Artist Name', 'Item artist', 'Artist', 'artist', 'ARTIST'];
-    console.log('Checking artist columns:', possibleArtistColumns.map(col => ({
-        column: col,
-        value: row[col]
-    })));
-
-    const artist = row['Artist name'] || row['Artist Name'] || row['Item artist'] || row['Artist'] || row['artist'] || row['ARTIST'] || 'Unknown Artist';
-    const track = row['Item name'] || row['Item'] || row['Title'] || row['TITLE'] || 'Unknown Track';
-    const period = row['Transaction date from'] || row['Transaction date'] || row['Date'] || row['date'] || row['DATE'] || 'Unknown Period';
-    const revenue = parseAmount(row['Net revenue'] || row['Net Revenue'] || row['NET REVENUE'] || row['Payout amount (USD)'] || row['Payout amount'] || '0');
-    
-    // Si c'est un album, on utilise un format spécial pour le track
-    const itemType = row['Item type'] || row['item_type'] || '';
-    const finalTrack = itemType.toLowerCase() === 'album' ? `[Album] ${track}` : track;
-    
-    console.log('Bandcamp Processing:', { 
-        artist, 
-        track: finalTrack, 
-        period, 
-        revenue, 
-        itemType,
-        originalValue: row['Net revenue'] || row['Net Revenue'] || row['NET REVENUE'],
-        availableColumns: Object.keys(row)
-    });
-    
-    updateDataStructure(data, artist, finalTrack, period, revenue, 'Bandcamp');
-  }
-
-  function processBelieveRow(row, data) {
-    const artist = row['Artist'] || row['ARTIST'] || row['artist'] || row['Artist Name'] || 'Unknown Artist';
-    const track = row['Track'] || row['TRACK'] || row['track'] || row['Track Title'] || 'Unknown Track';
-    const period = row['Period'] || row['PERIOD'] || row['period'] || row['Date'] || 'Unknown Period';
-    const revenue = parseAmount(row['Net Amount'] || row['Amount'] || row['Revenue'] || row['NET AMOUNT'] || row['Net Income'] || '0');
-    
-    console.log('Believe Processing:', { artist, track, period, revenue, originalValue: row['Net Amount'] || row['Amount'] || row['Revenue'] || row['NET AMOUNT'] || row['Net Income'] });
-    updateDataStructure(data, artist, track, period, revenue, 'Believe');
-  }
-
-  function processDashgoRow(row, data) {
-    const artist = row['Artist Name'] || row['ARTIST NAME'] || row['artist_name'] || 'Unknown Artist';
-    const track = row['Track Title'] || row['TRACK TITLE'] || row['track_title'] || 'Unknown Track';
-    const period = row['Transaction Date'] || row['TRANSACTION DATE'] || row['transaction_date'] || 'Unknown Period';
-    const revenue = parseAmount(row['Payable'] || row['PAYABLE'] || row['payable'] || row['Net Amount'] || '0');
-    const store = row['Store'] || row['STORE'] || row['store'] || '';
-    
-    console.log('DashGo Processing:', { artist, track, period, revenue, store, originalValue: row['Payable'] || row['PAYABLE'] || row['payable'] || row['Net Amount'] });
-    updateDataStructure(data, artist, track, period, revenue, `DashGo (${store})`);
-  }
-
-  function updateDataStructure(data, artist, track, period, revenue, source) {
-    // Update artists data
-    if (!data.artists[artist]) {
-      data.artists[artist] = { total: 0, tracks: {}, sources: {} };
-    }
-    data.artists[artist].total += revenue;
-    if (!data.artists[artist].sources[source]) {
-      data.artists[artist].sources[source] = 0;
-    }
-    data.artists[artist].sources[source] += revenue;
-    
-    // Update tracks data
-    if (!data.tracks[track]) {
-      data.tracks[track] = { total: 0, artist: artist, sources: {} };
-    }
-    data.tracks[track].total += revenue;
-    if (!data.tracks[track].sources[source]) {
-      data.tracks[track].sources[source] = 0;
-    }
-    data.tracks[track].sources[source] += revenue;
-    
-    // Update periods data
-    if (!data.periods[period]) {
-      data.periods[period] = { total: 0, artists: {}, sources: {} };
-    }
-    data.periods[period].total += revenue;
-    if (!data.periods[period].sources[source]) {
-      data.periods[period].sources[source] = 0;
-    }
-    data.periods[period].sources[source] += revenue;
-    if (!data.periods[period].artists[artist]) {
-      data.periods[period].artists[artist] = { total: 0, sources: {} };
-    }
-    data.periods[period].artists[artist].total += revenue;
-    if (!data.periods[period].artists[artist].sources[source]) {
-      data.periods[period].artists[artist].sources[source] = 0;
-    }
-    data.periods[period].artists[artist].sources[source] += revenue;
-  }
-
-  function mergeData(newData) {
-    // Merge artists
-    for (const [artist, data] of Object.entries(newData.artists)) {
-      if (!globalImportedData.artists[artist]) {
-        globalImportedData.artists[artist] = { 
-          total: 0, 
-          tracks: {}, 
-          sources: {} 
-        };
-      }
-      globalImportedData.artists[artist].total += data.total;
-      
-      // Merge sources
-      for (const [source, amount] of Object.entries(data.sources)) {
-        if (!globalImportedData.artists[artist].sources[source]) {
-          globalImportedData.artists[artist].sources[source] = 0;
-        }
-        globalImportedData.artists[artist].sources[source] += amount;
-      }
-    }
-
-    // Merge tracks
-    for (const [track, data] of Object.entries(newData.tracks)) {
-      if (!globalImportedData.tracks[track]) {
-        globalImportedData.tracks[track] = { 
-          total: 0, 
-          artist: data.artist, 
-          sources: {} 
-        };
-      }
-      globalImportedData.tracks[track].total += data.total;
-      
-      // Merge sources
-      for (const [source, amount] of Object.entries(data.sources)) {
-        if (!globalImportedData.tracks[track].sources[source]) {
-          globalImportedData.tracks[track].sources[source] = 0;
-        }
-        globalImportedData.tracks[track].sources[source] += amount;
-      }
-    }
-
-    // Merge periods
-    for (const [period, data] of Object.entries(newData.periods)) {
-      if (!globalImportedData.periods[period]) {
-        globalImportedData.periods[period] = { 
-          total: 0, 
-          artists: {}, 
-          sources: {} 
-        };
-      }
-      globalImportedData.periods[period].total += data.total;
-      
-      // Merge sources
-      for (const [source, amount] of Object.entries(data.sources)) {
-        if (!globalImportedData.periods[period].sources[source]) {
-          globalImportedData.periods[period].sources[source] = 0;
-        }
-        globalImportedData.periods[period].sources[source] += amount;
-      }
-      
-      // Merge artists within periods
-      for (const [artist, artistData] of Object.entries(data.artists)) {
-        if (!globalImportedData.periods[period].artists[artist]) {
-          globalImportedData.periods[period].artists[artist] = {
-            total: 0,
-            sources: {}
-          };
-        }
-        globalImportedData.periods[period].artists[artist].total += artistData.total;
-        
-        // Merge sources for artists within periods
-        for (const [source, amount] of Object.entries(artistData.sources)) {
-          if (!globalImportedData.periods[period].artists[artist].sources[source]) {
-            globalImportedData.periods[period].artists[artist].sources[source] = 0;
-          }
-          globalImportedData.periods[period].artists[artist].sources[source] += amount;
-        }
-      }
-    }
-  }
-
-  function updateAllViews() {
-    updateArtistView();
-    updatePeriodView();
-    updateTrackView();
-  }
-
-  function updateArtistView() {
-    const container = document.getElementById('artist-cards');
-    container.innerHTML = '';
-
-    Object.entries(globalImportedData.artists)
-      .sort(([, a], [, b]) => b.total - a.total)
-      .forEach(([artist, data]) => {
-        const card = createCard(artist, data, 'artist');
-        container.appendChild(card);
-      });
-  }
-
-  function updatePeriodView() {
-    const container = document.getElementById('period-cards');
-    container.innerHTML = '';
-
-    Object.entries(globalImportedData.periods)
-      .sort(([a], [b]) => new Date(b) - new Date(a))
-      .forEach(([period, data]) => {
-        const card = createCard(period, data, 'period');
-        container.appendChild(card);
-      });
-  }
-
-  function updateTrackView() {
-    const container = document.getElementById('track-cards');
-    container.innerHTML = '';
-
-    Object.entries(globalImportedData.tracks)
-      .sort(([, a], [, b]) => b.total - a.total)
-      .forEach(([track, data]) => {
-        const card = createCard(track, data, 'track');
-        container.appendChild(card);
-      });
-  }
-
-  function createCard(title, data, type) {
-    const col = document.createElement('div');
-    col.className = 'col-md-6 col-lg-4';
-
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-
-    const titleElement = document.createElement('h3');
-    titleElement.className = 'card-title';
-    titleElement.textContent = title;
-
-    const totalAmount = document.createElement('div');
-    totalAmount.className = 'h1 mb-3';
-    totalAmount.textContent = formatMoney(data.total);
-
-    cardBody.appendChild(titleElement);
-    cardBody.appendChild(totalAmount);
-
-    // Ajouter la répartition par source
-    if (data.sources && Object.keys(data.sources).length > 0) {
-      const sourcesDiv = document.createElement('div');
-      sourcesDiv.className = 'mb-3';
-      sourcesDiv.innerHTML = '<h4>Par Source</h4>';
-
-      Object.entries(data.sources)
-        .sort(([, a], [, b]) => b - a)
-        .forEach(([source, amount]) => {
-          const sourceRow = document.createElement('div');
-          sourceRow.className = 'd-flex align-items-center mb-2';
-          sourceRow.innerHTML = `
-            <div class="flex-grow-1">
-              <div class="font-weight-bold">${source}</div>
-            </div>
-            <div class="ms-2">${formatMoney(amount)}</div>
-          `;
-          sourcesDiv.appendChild(sourceRow);
-        });
-
-      cardBody.appendChild(sourcesDiv);
-    }
-
-    // Ajouter des détails spécifiques selon le type
-    if (type === 'artist' && data.tracks) {
-      const tracksDiv = document.createElement('div');
-      tracksDiv.innerHTML = '<h4>Top Tracks</h4>';
-      Object.entries(data.tracks)
-        .sort(([, a], [, b]) => b.total - a.total)
-        .slice(0, 3)
-        .forEach(([track, trackData]) => {
-          const trackRow = document.createElement('div');
-          trackRow.className = 'd-flex align-items-center mb-2';
-          trackRow.innerHTML = `
-            <div class="flex-grow-1">
-              <div class="font-weight-bold">${track}</div>
-            </div>
-            <div class="ms-2">${formatMoney(trackData.total)}</div>
-          `;
-          tracksDiv.appendChild(trackRow);
-        });
-      cardBody.appendChild(tracksDiv);
-    }
-
-    if (type === 'track' && data.artist) {
-      const artistDiv = document.createElement('div');
-      artistDiv.className = 'text-muted mb-3';
-      artistDiv.textContent = `Artist: ${data.artist}`;
-      cardBody.appendChild(artistDiv);
-    }
-
-    card.appendChild(cardBody);
-    col.appendChild(card);
-    return col;
-  }
-
-  // Export functionality
-  exportBtn.addEventListener('click', function() {
-    const currentView = document.querySelector('input[name="viewType"]:checked').value;
-    let csvContent = '';
-
-    switch (currentView) {
+    // Mettre à jour l'affichage selon le type de vue
+    switch (viewType) {
       case 'artist':
-        csvContent = 'Artist,Revenue\n';
-        Object.entries(globalImportedData.artists)
+        Object.entries(aggregatedData.byArtist)
           .sort(([, a], [, b]) => b.total - a.total)
           .forEach(([artist, data]) => {
-            csvContent += `"${artist}",${data.total.toFixed(2)}\n`;
+            const card = createArtistCard(artist, data);
+            document.getElementById('artist-cards').appendChild(card);
           });
         break;
 
       case 'period':
-        csvContent = 'Period,Revenue\n';
-        Object.entries(globalImportedData.periods)
+        Object.entries(aggregatedData.byPeriod)
           .sort(([a], [b]) => new Date(b) - new Date(a))
           .forEach(([period, data]) => {
-            csvContent += `"${period}",${data.total.toFixed(2)}\n`;
+            const card = createPeriodCard(period, data);
+            document.getElementById('period-cards').appendChild(card);
           });
         break;
 
       case 'track':
-        csvContent = 'Track,Artist,Revenue\n';
-        Object.entries(globalImportedData.tracks)
+        Object.entries(aggregatedData.byTrack)
           .sort(([, a], [, b]) => b.total - a.total)
           .forEach(([track, data]) => {
-            csvContent += `"${track}","${data.artist}",${data.total.toFixed(2)}\n`;
+            const card = createTrackCard(track, data);
+            document.getElementById('track-cards').appendChild(card);
           });
         break;
     }
+  }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `royalties_${currentView}_export.csv`;
-    link.click();
+  // Update charts if we're on the charts page
+  const isChartsPage = document.getElementById('chart-revenue-by-period') !== null;
+  if (isChartsPage) {
+    updateCharts(aggregatedData);
+  }
+}
+
+// Fonction pour formater la date
+function formatImportDate(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+// Fonction pour générer un ID unique pour le fichier
+function generateFileId(fileData, template) {
+  const importDate = formatImportDate(new Date());
+  const fileName = fileData.fileName.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/gi, '_');
+  return `${template.source}_${importDate}_${fileName}`;
+}
+
+// Fonction pour afficher la liste des fichiers stockés
+function displayStoredFiles() {
+  const storedFiles = getStoredData();
+  console.log('Displaying stored files:', storedFiles);
+  
+  const container = document.getElementById('stored-files-list') || createStoredFilesContainer();
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Fichiers importés</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-vcenter">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Date d'import</th>
+                <th>Nom du fichier</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${storedFiles.map(file => `
+                <tr>
+                  <td>${file.template.source}</td>
+                  <td>${new Date(file.importDate).toLocaleDateString('fr-FR')}</td>
+                  <td>${file.fileName}</td>
+                  <td>
+                    <button class="btn btn-danger btn-sm" onclick="removeStoredFile('${file.fileId}')">
+                      Supprimer
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Only update view if we're on the import page
+  const isImportPage = !document.documentElement.dataset.hideImport;
+  if (isImportPage) {
+    // Get the current view type from radio buttons
+    const currentViewRadio = document.querySelector('input[name="viewType"]:checked');
+    if (currentViewRadio) {
+      updateView(currentViewRadio.value);
+    }
+  }
+}
+
+// Fonction pour créer le conteneur de la liste des fichiers
+function createStoredFilesContainer() {
+  const container = document.createElement('div');
+  container.id = 'stored-files-list';
+  container.className = 'mt-3';
+  
+  // Vérifier si nous sommes sur la page d'import
+  const importForms = document.getElementById('importForms');
+  if (importForms) {
+    importForms.parentNode.insertBefore(container, importForms.nextSibling);
+  }
+  
+  return container;
+}
+
+// Fonction pour supprimer un fichier stocké
+function removeStoredFile(fileId) {
+  try {
+    let storedFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+    storedFiles = storedFiles.filter(file => file.fileId !== fileId);
+    localStorage.setItem('csvFiles', JSON.stringify(storedFiles));
+    
+    // Mettre à jour l'affichage
+    displayStoredFiles();
+    // Recalculer et mettre à jour les graphiques
+    updateAllViews();
+  } catch (error) {
+    console.error('Erreur lors de la suppression du fichier:', error);
+    alert('Erreur lors de la suppression du fichier');
+  }
+}
+
+// Fonction globale pour mettre à jour toutes les vues
+function updateAllViews() {
+  // Récupérer toutes les données stockées
+  const storedFiles = getStoredData();
+  
+  // Agréger les données de tous les fichiers
+  const aggregatedData = {
+    byPeriod: {},
+    byArtist: {},
+    byTrack: {},
+    bySource: {},
+    totalRevenue: 0
+  };
+
+  // Fusionner les données de tous les fichiers
+  storedFiles.forEach(fileData => {
+    if (fileData && fileData.data && fileData.template && fileData.template.source) {
+      console.log('Processing file data:', {
+        fileName: fileData.fileName,
+        template: fileData.template.source,
+        data: fileData.data
+      });
+      mergeObjects(aggregatedData, fileData.data);
+    } else {
+      console.warn('Skipping invalid file data:', fileData);
+    }
   });
+
+  console.log('Final aggregated data:', aggregatedData);
+
+  // Mettre à jour les graphiques avec les données agrégées
+  updateCharts(aggregatedData);
+}
+
+// Fonction globale pour fusionner les objets de données
+function mergeObjects(target, source) {
+  if (!source) return target;
+
+  // Fusionner les données par période
+  if (source.byPeriod) {
+    Object.entries(source.byPeriod).forEach(([period, data]) => {
+      if (!target.byPeriod[period]) {
+        target.byPeriod[period] = {
+          total: 0,
+          sources: {},
+          artists: {},
+          tracks: {}
+        };
+      }
+      target.byPeriod[period].total += data.total || 0;
+      
+      // Fusionner les sources
+      if (data.sources) {
+        Object.entries(data.sources).forEach(([source, amount]) => {
+          target.byPeriod[period].sources[source] = (target.byPeriod[period].sources[source] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les artistes
+      if (data.artists) {
+        Object.entries(data.artists).forEach(([artist, amount]) => {
+          target.byPeriod[period].artists[artist] = (target.byPeriod[period].artists[artist] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les tracks
+      if (data.tracks) {
+        Object.entries(data.tracks).forEach(([track, amount]) => {
+          target.byPeriod[period].tracks[track] = (target.byPeriod[period].tracks[track] || 0) + amount;
+        });
+      }
+    });
+  }
+
+  // Fusionner les données par artiste
+  if (source.byArtist) {
+    Object.entries(source.byArtist).forEach(([artist, data]) => {
+      if (!target.byArtist[artist]) {
+        target.byArtist[artist] = {
+          total: 0,
+          tracks: {},
+          periods: {},
+          sources: {}
+        };
+      }
+      target.byArtist[artist].total += data.total || 0;
+      
+      // Fusionner les tracks
+      if (data.tracks) {
+        Object.entries(data.tracks).forEach(([track, amount]) => {
+          target.byArtist[artist].tracks[track] = (target.byArtist[artist].tracks[track] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les périodes
+      if (data.periods) {
+        Object.entries(data.periods).forEach(([period, amount]) => {
+          target.byArtist[artist].periods[period] = (target.byArtist[artist].periods[period] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les sources
+      if (data.sources) {
+        Object.entries(data.sources).forEach(([source, amount]) => {
+          target.byArtist[artist].sources[source] = (target.byArtist[artist].sources[source] || 0) + amount;
+        });
+      }
+    });
+  }
+
+  // Fusionner les données par track
+  if (source.byTrack) {
+    Object.entries(source.byTrack).forEach(([track, data]) => {
+      if (!target.byTrack[track]) {
+        target.byTrack[track] = {
+          total: 0,
+          artist: data.artist,
+          periods: {},
+          sources: {}
+        };
+      }
+      target.byTrack[track].total += data.total || 0;
+      
+      // Fusionner les périodes
+      if (data.periods) {
+        Object.entries(data.periods).forEach(([period, amount]) => {
+          target.byTrack[track].periods[period] = (target.byTrack[track].periods[period] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les sources
+      if (data.sources) {
+        Object.entries(data.sources).forEach(([source, amount]) => {
+          target.byTrack[track].sources[source] = (target.byTrack[track].sources[source] || 0) + amount;
+        });
+      }
+    });
+  }
+
+  // Fusionner les données par source
+  if (source.bySource) {
+    Object.entries(source.bySource).forEach(([sourceName, data]) => {
+      if (!target.bySource[sourceName]) {
+        target.bySource[sourceName] = {
+          total: 0,
+          periods: {},
+          artists: {},
+          tracks: {}
+        };
+      }
+      target.bySource[sourceName].total += data.total || 0;
+      
+      // Fusionner les périodes
+      if (data.periods) {
+        Object.entries(data.periods).forEach(([period, amount]) => {
+          target.bySource[sourceName].periods[period] = (target.bySource[sourceName].periods[period] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les artistes
+      if (data.artists) {
+        Object.entries(data.artists).forEach(([artist, amount]) => {
+          target.bySource[sourceName].artists[artist] = (target.bySource[sourceName].artists[artist] || 0) + amount;
+        });
+      }
+      
+      // Fusionner les tracks
+      if (data.tracks) {
+        Object.entries(data.tracks).forEach(([track, amount]) => {
+          target.bySource[sourceName].tracks[track] = (target.bySource[sourceName].tracks[track] || 0) + amount;
+        });
+      }
+    });
+  }
+
+  // Mettre à jour le revenu total
+  if (source.totalRevenue) {
+    target.totalRevenue = (target.totalRevenue || 0) + source.totalRevenue;
+  }
+
+  return target;
+}
+
+function updateCharts(aggregatedData) {
+  // Check if we're on the charts page by looking for a key element
+  const isChartsPage = document.getElementById('chart-revenue-by-period') !== null;
+  if (!isChartsPage) {
+    return; // Exit if we're not on the charts page
+  }
+
+  // Mise à jour des revenus totaux
+  const totalRevenue = aggregatedData.totalRevenue || 0;
+  document.getElementById('total-revenue').textContent = formatMoney(totalRevenue);
+
+  // Calculer la tendance par rapport à la période précédente
+  const periods = Object.keys(aggregatedData.byPeriod || {}).sort();
+  if (periods.length >= 2) {
+    const currentPeriod = periods[periods.length - 1];
+    const previousPeriod = periods[periods.length - 2];
+    const currentRevenue = aggregatedData.byPeriod[currentPeriod].total;
+    const previousRevenue = aggregatedData.byPeriod[previousPeriod].total;
+    const trend = ((currentRevenue - previousRevenue) / previousRevenue) * 100;
+    
+    const trendElement = document.getElementById('revenue-trend');
+    trendElement.textContent = `${trend.toFixed(1)}%`;
+    trendElement.className = trend >= 0 ? 'text-green' : 'text-red';
+    
+    document.getElementById('revenue-comparison').textContent = 
+      `${formatMoney(currentRevenue - previousRevenue)} par rapport à ${previousPeriod}`;
+  }
+
+  // Mise à jour du top artiste
+  const topArtist = Object.entries(aggregatedData.byArtist || {})
+    .sort(([,a], [,b]) => b.total - a.total)[0];
+  if (topArtist) {
+    document.getElementById('top-artist-revenue').textContent = formatMoney(topArtist[1].total);
+    document.getElementById('top-artist-name').textContent = topArtist[0];
+    document.getElementById('top-artist-stats').textContent = 
+      `${Object.keys(topArtist[1].tracks).length} tracks, ${Object.keys(topArtist[1].periods).length} périodes`;
+  }
+
+  // Mise à jour du top track
+  const topTrack = Object.entries(aggregatedData.byTrack || {})
+    .sort(([,a], [,b]) => b.total - a.total)[0];
+  if (topTrack) {
+    document.getElementById('top-track-revenue').textContent = formatMoney(topTrack[1].total);
+    document.getElementById('top-track-name').textContent = topTrack[0];
+    document.getElementById('top-track-stats').textContent = 
+      `Par ${topTrack[1].artist}, ${Object.keys(topTrack[1].periods).length} périodes`;
+  }
+
+  // Mise à jour de la source principale
+  const topSource = Object.entries(aggregatedData.bySource || {})
+    .sort(([,a], [,b]) => b.total - a.total)[0];
+  if (topSource) {
+    document.getElementById('top-source-revenue').textContent = formatMoney(topSource[1].total);
+    document.getElementById('top-source-name').textContent = topSource[0];
+    document.getElementById('source-stats').textContent = 
+      `${Object.keys(topSource[1].tracks).length} tracks, ${Object.keys(topSource[1].periods).length} périodes`;
+  }
+
+  // Configuration des graphiques
+  const chartOptions = {
+    chart: {
+      type: 'line',
+      height: 96,
+      sparkline: {
+        enabled: true
+      },
+      toolbar: {
+        show: false
+      }
+    },
+    colors: ['var(--tblr-primary)'],
+    stroke: {
+      width: 2,
+      curve: 'smooth'
+    },
+    tooltip: {
+      fixed: {
+        enabled: false
+      },
+      x: {
+        show: false
+      },
+      marker: {
+        show: false
+      }
+    }
+  };
+
+  // Graphique des revenus par période
+  if (periods.length > 0) {
+    const revenueData = periods.map(period => ({
+      x: period,
+      y: aggregatedData.byPeriod[period].total
+    }));
+
+    new ApexCharts(document.querySelector('#chart-revenue-by-period'), {
+      ...chartOptions,
+      series: [{
+        name: 'Revenus',
+        data: revenueData
+      }]
+    }).render();
+  }
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+  // Vérifier si nous devons afficher l'interface d'import
+  const hideImport = document.documentElement.dataset.hideImport === 'true';
+  const isImportPage = !hideImport;
+  const isChartsPage = document.getElementById('chart-revenue-by-period') !== null;
+  
+  // Initialiser les vues et les graphiques
+  updateAllViews();
+  
+  // Si nous ne sommes pas sur la page d'import, ne pas initialiser l'interface d'import
+  if (!isImportPage) {
+    return;
+  }
+
+  // Gérer les changements de template et l'upload de fichiers
+  const templateSelects = document.querySelectorAll('.template-select');
+  if (templateSelects) {
+    templateSelects.forEach(select => {
+      select.addEventListener('change', function() {
+        currentTemplate = templates[this.value];
+        console.log('Selected template:', currentTemplate);
+      });
+    });
+  }
+
+  const fileInputs = document.querySelectorAll('.csv-file');
+  if (fileInputs) {
+    fileInputs.forEach(input => {
+      input.addEventListener('change', function(e) {
+        const templateSelect = this.closest('.import-form')?.querySelector('.template-select');
+        if (templateSelect) {
+          currentTemplate = templates[templateSelect.value];
+          if (this.files.length > 0 && currentTemplate) {
+            processFiles(this.files, currentTemplate);
+          } else {
+            alert('Veuillez sélectionner un template et un fichier.');
+          }
+        }
+      });
+    });
+  }
+
+  // Gérer l'ajout de nouveaux formulaires d'import
+  const addImportBtn = document.getElementById('addImportBtn');
+  if (addImportBtn) {
+    addImportBtn.addEventListener('click', function() {
+      const template = document.querySelector('.import-form').cloneNode(true);
+      template.querySelector('.csv-file').value = '';
+      template.querySelector('.remove-import').style.display = 'block';
+      document.getElementById('importForms').appendChild(template);
+
+      // Réinitialiser les événements sur le nouveau formulaire
+      const newSelect = template.querySelector('.template-select');
+      const newInput = template.querySelector('.csv-file');
+      const newRemoveBtn = template.querySelector('.remove-import');
+
+      if (newSelect) {
+        newSelect.addEventListener('change', function() {
+          currentTemplate = templates[this.value];
+        });
+      }
+
+      if (newInput) {
+        newInput.addEventListener('change', function(e) {
+          const templateSelect = this.closest('.import-form')?.querySelector('.template-select');
+          if (templateSelect) {
+            currentTemplate = templates[templateSelect.value];
+            if (this.files.length > 0 && currentTemplate) {
+              processFiles(this.files, currentTemplate);
+            } else {
+              alert('Veuillez sélectionner un template et un fichier.');
+            }
+          }
+        });
+      }
+
+      if (newRemoveBtn) {
+        newRemoveBtn.addEventListener('click', function() {
+          template.remove();
+        });
+      }
+    });
+  }
+
+  // Gérer les changements de vue
+  const viewTypeRadios = document.querySelectorAll('input[name="viewType"]');
+  if (viewTypeRadios) {
+    viewTypeRadios.forEach(radio => {
+      radio.addEventListener('change', function(e) {
+        updateView(e.target.value);
+      });
+    });
+  }
+
+  // Gérer l'export
+  const exportBtn = document.getElementById('exportBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+      const storedFiles = getStoredData();
+      storedFiles.forEach(fileData => {
+        if (fileData.data && fileData.template) {
+          exportToCSV(fileData.data, fileData.template);
+        }
+      });
+    });
+  }
+
+  // Initialiser avec le premier template
+  const firstTemplateSelect = document.querySelector('.template-select');
+  if (firstTemplateSelect) {
+    currentTemplate = templates[firstTemplateSelect.value];
+  }
+
+  // Créer le conteneur pour les fichiers stockés
+  createStoredFilesContainer();
+  
+  // Afficher les fichiers stockés
+  displayStoredFiles();
 }); 

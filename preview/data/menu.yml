@@ -1,0 +1,11 @@
+base:
+  royalties:
+    icon: chart-dots
+    title: Royalties
+    items:
+      royalties:
+        title: Import
+        url: royalties.html
+      royalties-charts:
+        title: Analytics
+        url: royalties-charts 
