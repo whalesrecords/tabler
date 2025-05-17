@@ -828,4 +828,72 @@ function updatePerformanceStats(data) {
       comparisonElement.textContent = `${formatMoney(currentRevenue)} vs ${formatMoney(previousRevenue)} (${previousPeriod})`;
     }
   }
-} 
+}
+
+// Fonction pour exporter les données en CSV
+function exportCSV(data) {
+  if (!data) return;
+
+  const artists = Object.keys(data.byArtist || {});
+  
+  // Pour chaque artiste, créer un CSV séparé
+  artists.forEach(artist => {
+    const artistData = data.byArtist[artist];
+    const rows = [];
+    
+    // En-têtes
+    rows.push(['Date', 'Quarter', 'Source', 'Track', 'Revenue']);
+    
+    // Données
+    Object.entries(artistData.byTrack || {}).forEach(([track, trackData]) => {
+      Object.entries(trackData.byPeriod || {}).forEach(([period, periodData]) => {
+        Object.entries(periodData.bySource || {}).forEach(([source, revenue]) => {
+          const [year, quarter] = period.split('Q');
+          rows.push([
+            `${year}-${quarter}`,
+            `Q${quarter}`,
+            source,
+            track,
+            revenue.toFixed(2)
+          ]);
+        });
+      });
+    });
+    
+    // Ajouter une ligne vide et le total
+    rows.push([]);
+    rows.push(['Total', '', '', '', artistData.total.toFixed(2)]);
+    
+    // Convertir en CSV
+    const csv = rows.map(row => row.join(',')).join('\n');
+    
+    // Créer le nom de fichier au format demandé
+    const date = new Date();
+    const currentQuarter = Math.floor((date.getMonth() + 3) / 3);
+    const fileName = `WhalesRecords_Statement_${artist}_${date.getFullYear()}_Q${currentQuarter}_All.csv`;
+    
+    // Télécharger le fichier
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (navigator.msSaveBlob) {
+      navigator.msSaveBlob(blob, fileName);
+    } else {
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  });
+}
+
+// Ajouter l'event listener pour le bouton d'export
+document.addEventListener('DOMContentLoaded', function() {
+  const exportButton = document.querySelector('#export-csv');
+  if (exportButton) {
+    exportButton.addEventListener('click', function() {
+      const data = getStoredData();
+      exportCSV(data);
+    });
+  }
+}); 

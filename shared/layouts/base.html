@@ -2,7 +2,7 @@
 <!doctype html>
 {% include "layout/banner.html" %}
 {% assign title = title | default: layout.title %}
-<html lang="en"{% if layout-rtl %} dir="rtl" {% endif %}{% if layout.html-class or page.html-class %} class="{{ page.html-class | default: layout.html-class }}"{% endif %}>
+<html lang="en"{% if layout-rtl %} dir="rtl" {% endif %}{% if layout.html-class or page.html-class %} class="{{ page.html-class | default: layout.html-class }}"{% endif %}{% if page.hide_import %} data-hide-import="true"{% endif %}>
 <head>
 	<meta charset="utf-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>

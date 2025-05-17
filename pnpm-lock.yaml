@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      apexcharts:
+        specifier: 3.54.1
+        version: 3.54.1
     devDependencies:
       '@argos-ci/playwright':
         specifier: ^5.0.3

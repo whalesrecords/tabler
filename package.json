@@ -45,5 +45,8 @@
     "shx": "^0.4.0",
     "terser": "^5.39.0",
     "turbo": "^2.5.3"
+  },
+  "dependencies": {
+    "apexcharts": "3.54.1"
   }
 }
