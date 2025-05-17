@@ -620,10 +620,16 @@ document.addEventListener("DOMContentLoaded", function() {
   async function processCSV(file, template) {
     const text = await file.text();
     const delimiter = detectDelimiter(text);
+    console.log('Detected delimiter:', delimiter);
+    
     const lines = text.split('\n').map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"(.*)"$/, '$1')));
     const headers = lines[0].map(header => header.trim());
     
-    console.log('CSV Headers:', headers);
+    console.log('CSV Headers (raw):', lines[0]);
+    console.log('CSV Headers (processed):', headers);
+    
+    // Log des premières lignes pour debug
+    console.log('First few rows:', lines.slice(1, 3));
     
     const data = {
         artists: {},
@@ -639,8 +645,8 @@ document.addEventListener("DOMContentLoaded", function() {
         headers.forEach((header, index) => {
             row[header] = lines[i][index];
         });
-        
-        console.log('Processing Row:', row);
+
+        console.log(`Processing row ${i}:`, row);
 
         // Process based on template
         switch (template.toLowerCase()) {
@@ -658,7 +664,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 processDashgoRow(row, data);
                 break;
             default:
-                console.warn('Template non reconnu:', template);
                 // Essayer de détecter automatiquement le template basé sur les en-têtes
                 if (headers.includes('Transaction Date') && headers.includes('Store')) {
                     console.log('Détection automatique: DashGo détecté');
@@ -666,12 +671,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 } else if (headers.includes('Artist Name') && headers.includes('Song Title')) {
                     console.log('Détection automatique: Tunecore détecté');
                     processTunecoreRow(row, data);
-                } else if (headers.includes('artist_name')) {
+                } else if (headers.some(h => ['Item type', 'Net revenue', 'Artist Name'].includes(h))) {
                     console.log('Détection automatique: Bandcamp détecté');
                     processBandcampRow(row, data);
                 } else if (headers.includes('Net Amount')) {
                     console.log('Détection automatique: Believe détecté');
                     processBelieveRow(row, data);
+                } else {
+                    console.warn('Template non reconnu:', template, 'Headers:', headers);
                 }
         }
     }
@@ -690,13 +697,37 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function processBandcampRow(row, data) {
-    const artist = row['artist_name'] || row['Artist'] || row['artist'] || row['ARTIST'] || 'Unknown Artist';
-    const track = row['item_name'] || row['Item'] || row['Track'] || row['TRACK'] || 'Unknown Track';
-    const period = row['date'] || row['Date'] || row['DATE'] || 'Unknown Period';
-    const revenue = parseAmount(row['amount_paid'] || row['Amount'] || row['AMOUNT'] || row['Net Amount'] || row['NET AMOUNT'] || '0');
+    // Log complet des données pour debug
+    console.log('Bandcamp Raw Row:', row);
+    console.log('Bandcamp Available Headers:', Object.keys(row));
+
+    // Vérification des colonnes Bandcamp avec les noms de colonnes corrects
+    const possibleArtistColumns = ['Artist name', 'Artist Name', 'Item artist', 'Artist', 'artist', 'ARTIST'];
+    console.log('Checking artist columns:', possibleArtistColumns.map(col => ({
+        column: col,
+        value: row[col]
+    })));
+
+    const artist = row['Artist name'] || row['Artist Name'] || row['Item artist'] || row['Artist'] || row['artist'] || row['ARTIST'] || 'Unknown Artist';
+    const track = row['Item name'] || row['Item'] || row['Title'] || row['TITLE'] || 'Unknown Track';
+    const period = row['Transaction date from'] || row['Transaction date'] || row['Date'] || row['date'] || row['DATE'] || 'Unknown Period';
+    const revenue = parseAmount(row['Net revenue'] || row['Net Revenue'] || row['NET REVENUE'] || row['Payout amount (USD)'] || row['Payout amount'] || '0');
     
-    console.log('Bandcamp Processing:', { artist, track, period, revenue, originalValue: row['amount_paid'] || row['Amount'] || row['AMOUNT'] || row['Net Amount'] || row['NET AMOUNT'] });
-    updateDataStructure(data, artist, track, period, revenue, 'Bandcamp');
+    // Si c'est un album, on utilise un format spécial pour le track
+    const itemType = row['Item type'] || row['item_type'] || '';
+    const finalTrack = itemType.toLowerCase() === 'album' ? `[Album] ${track}` : track;
+    
+    console.log('Bandcamp Processing:', { 
+        artist, 
+        track: finalTrack, 
+        period, 
+        revenue, 
+        itemType,
+        originalValue: row['Net revenue'] || row['Net Revenue'] || row['NET REVENUE'],
+        availableColumns: Object.keys(row)
+    });
+    
+    updateDataStructure(data, artist, finalTrack, period, revenue, 'Bandcamp');
   }
 
   function processBelieveRow(row, data) {
