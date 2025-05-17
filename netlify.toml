@@ -1,5 +1,9 @@
 [build]
-  command = "pnpm install && cd preview && pnpm build"
+  command = """
+    pnpm install && \
+    cd core && pnpm build && cd .. && \
+    cd preview && pnpm build
+  """
   publish = "preview/dist"
 
 [build.environment]
