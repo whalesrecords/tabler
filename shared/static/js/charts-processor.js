@@ -130,6 +130,19 @@ function updateCharts(data) {
       return;
     }
 
+    // Mettre à jour les totaux et meilleures performances
+    updatePerformanceStats(data);
+
+    // Gérer la visibilité de la carte des top artistes
+    const topArtistsCard = document.querySelector("#chart-top-artists").closest('.card');
+    if (topArtistsCard) {
+      if (currentFilters.artist) {
+        topArtistsCard.style.display = 'none';
+      } else {
+        topArtistsCard.style.display = 'block';
+      }
+    }
+
     const charts = {};
     
     // Options communes pour tous les graphiques
@@ -232,22 +245,47 @@ function updateCharts(data) {
       charts.revenueByPeriod.render();
     }
 
-    // Graphique des top artistes
-    if (document.querySelector("#chart-top-artists") && data.byArtist) {
+    // Graphique des top artistes (seulement si aucun artiste n'est sélectionné)
+    if (!currentFilters.artist && document.querySelector("#chart-top-artists") && data.byArtist) {
       const artistData = Object.entries(data.byArtist)
         .filter(([, artistData]) => artistData && typeof artistData.total === 'number')
-        .sort(([, a], [, b]) => b.total - a.total)
-        .slice(0, 5);
+        .sort(([, a], [, b]) => b.total - a.total);
 
       charts.topArtists = new ApexCharts(document.querySelector("#chart-top-artists"), {
         ...commonOptions,
         chart: {
           ...commonOptions.chart,
-          type: 'pie',
-          height: 300
+          type: 'bar',
+          height: Math.max(300, artistData.length * 30)
         },
-        series: artistData.map(([, artist]) => artist.total),
-        labels: artistData.map(([artist]) => artist),
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            columnWidth: '70%',
+          }
+        },
+        series: [{
+          name: 'Revenus',
+          data: artistData.map(([, artist]) => artist.total)
+        }],
+        xaxis: {
+          categories: artistData.map(([artist]) => artist),
+          labels: {
+            style: {
+              colors: '#9aa0ac',
+              fontSize: '12px',
+            }
+          }
+        },
+        yaxis: {
+          labels: {
+            formatter: formatMoney,
+            style: {
+              colors: '#9aa0ac',
+              fontSize: '12px',
+            }
+          }
+        },
         tooltip: {
           y: {
             formatter: formatMoney
@@ -467,6 +505,11 @@ function initializeFilters(data) {
     const artists = Object.keys(data.byArtist || {}).sort();
     artistSelect.innerHTML = '<option value="">Tous les artistes</option>' +
       artists.map(artist => `<option value="${artist}">${artist}</option>`).join('');
+    
+    // Ajouter un event listener pour mettre à jour les tracks quand l'artiste change
+    artistSelect.addEventListener('change', function() {
+      updateTrackFilter(data, this.value);
+    });
   }
 
   // Remplir les filtres de période
@@ -479,13 +522,30 @@ function initializeFilters(data) {
     periodEnd.innerHTML = '<option value="">Fin</option>' + periodOptions;
   }
 
-  // Remplir le filtre des tracks
+  // Initialiser le filtre des tracks avec tous les tracks
+  updateTrackFilter(data, '');
+}
+
+// Fonction pour mettre à jour le filtre des tracks en fonction de l'artiste sélectionné
+function updateTrackFilter(data, selectedArtist) {
   const trackSelect = document.querySelector('#track-filter');
-  if (trackSelect) {
-    const tracks = Object.keys(data.byTrack || {}).sort();
-    trackSelect.innerHTML = '<option value="">Tous les albums/tracks</option>' +
-      tracks.map(track => `<option value="${track}">${track}</option>`).join('');
+  if (!trackSelect) return;
+
+  let tracks = [];
+  
+  if (selectedArtist) {
+    // Si un artiste est sélectionné, ne montrer que ses tracks
+    const artistData = data.byArtist[selectedArtist];
+    if (artistData && artistData.tracks) {
+      tracks = Object.keys(artistData.tracks).sort();
+    }
+  } else {
+    // Si aucun artiste n'est sélectionné, montrer toutes les tracks
+    tracks = Object.keys(data.byTrack || {}).sort();
   }
+
+  trackSelect.innerHTML = '<option value="">Tous les albums/tracks</option>' +
+    tracks.map(track => `<option value="${track}">${track}</option>`).join('');
 }
 
 // Fonction pour appliquer les filtres
@@ -556,6 +616,28 @@ function applyFilters(data) {
 document.addEventListener('DOMContentLoaded', function() {
   const applyFiltersBtn = document.querySelector('#apply-filters');
   const resetFiltersBtn = document.querySelector('#reset-filters');
+  const artistSelect = document.querySelector('#artist-filter');
+  const trackSelect = document.querySelector('#track-filter');
+
+  if (artistSelect) {
+    artistSelect.addEventListener('change', function() {
+      // Réinitialiser la sélection de track
+      if (trackSelect) {
+        trackSelect.value = '';
+      }
+      
+      // Mettre à jour les filtres et les graphiques immédiatement
+      currentFilters = {
+        artist: this.value,
+        periodStart: document.querySelector('#period-start').value,
+        periodEnd: document.querySelector('#period-end').value,
+        track: ''
+      };
+      
+      const filteredData = applyFilters(originalData);
+      updateCharts(filteredData);
+    });
+  }
 
   if (applyFiltersBtn) {
     applyFiltersBtn.addEventListener('click', function() {
@@ -586,6 +668,9 @@ document.addEventListener('DOMContentLoaded', function() {
         periodEnd: '',
         track: ''
       };
+      
+      // Mettre à jour le filtre des tracks pour montrer toutes les tracks
+      updateTrackFilter(originalData, '');
       
       updateCharts(originalData);
     });
@@ -638,4 +723,109 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error during initialization:', error);
     }
   }, 500);
-}); 
+});
+
+// Fonction pour mettre à jour les statistiques de performance
+function updatePerformanceStats(data) {
+  // Revenus totaux
+  const totalRevenue = data.totalRevenue || Object.values(data.byPeriod || {}).reduce((sum, period) => sum + (period.total || 0), 0);
+  const totalRevenueElement = document.querySelector('#total-revenue');
+  if (totalRevenueElement) {
+    totalRevenueElement.textContent = formatMoney(totalRevenue);
+  }
+
+  // Meilleur artiste
+  if (data.byArtist) {
+    const topArtist = Object.entries(data.byArtist)
+      .sort(([, a], [, b]) => b.total - a.total)[0];
+    
+    if (topArtist) {
+      const [artistName, artistData] = topArtist;
+      const topArtistNameElement = document.querySelector('#top-artist-name');
+      const topArtistRevenueElement = document.querySelector('#top-artist-revenue');
+      const topArtistStatsElement = document.querySelector('#top-artist-stats');
+      
+      if (topArtistNameElement) {
+        topArtistNameElement.textContent = artistName;
+      }
+      if (topArtistRevenueElement) {
+        topArtistRevenueElement.textContent = formatMoney(artistData.total);
+      }
+      if (topArtistStatsElement) {
+        const artistShare = ((artistData.total / totalRevenue) * 100).toFixed(1);
+        topArtistStatsElement.textContent = `${artistShare}% des revenus totaux`;
+      }
+    }
+  }
+
+  // Meilleure track
+  if (data.byTrack) {
+    const topTrack = Object.entries(data.byTrack)
+      .sort(([, a], [, b]) => b.total - a.total)[0];
+    
+    if (topTrack) {
+      const [trackName, trackData] = topTrack;
+      const topTrackNameElement = document.querySelector('#top-track-name');
+      const topTrackRevenueElement = document.querySelector('#top-track-revenue');
+      const topTrackStatsElement = document.querySelector('#top-track-stats');
+      
+      if (topTrackNameElement) {
+        topTrackNameElement.textContent = trackName;
+      }
+      if (topTrackRevenueElement) {
+        topTrackRevenueElement.textContent = formatMoney(trackData.total);
+      }
+      if (topTrackStatsElement) {
+        const trackShare = ((trackData.total / totalRevenue) * 100).toFixed(1);
+        topTrackStatsElement.textContent = `${trackShare}% des revenus totaux`;
+      }
+    }
+  }
+
+  // Meilleure source
+  if (data.bySource) {
+    const topSource = Object.entries(data.bySource)
+      .sort(([, a], [, b]) => b.total - a.total)[0];
+    
+    if (topSource) {
+      const [sourceName, sourceData] = topSource;
+      const topSourceNameElement = document.querySelector('#top-source-name');
+      const topSourceRevenueElement = document.querySelector('#top-source-revenue');
+      const sourceStatsElement = document.querySelector('#source-stats');
+      
+      if (topSourceNameElement) {
+        topSourceNameElement.textContent = sourceName;
+      }
+      if (topSourceRevenueElement) {
+        topSourceRevenueElement.textContent = formatMoney(sourceData.total);
+      }
+      if (sourceStatsElement) {
+        const sourceShare = ((sourceData.total / totalRevenue) * 100).toFixed(1);
+        sourceStatsElement.textContent = `${sourceShare}% des revenus totaux`;
+      }
+    }
+  }
+
+  // Tendance des revenus
+  const periods = Object.keys(data.byPeriod || {}).sort();
+  if (periods.length >= 2) {
+    const currentPeriod = periods[periods.length - 1];
+    const previousPeriod = periods[periods.length - 2];
+    const currentRevenue = data.byPeriod[currentPeriod]?.total || 0;
+    const previousRevenue = data.byPeriod[previousPeriod]?.total || 0;
+    
+    const trend = previousRevenue ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+    const trendElement = document.querySelector('#revenue-trend');
+    const comparisonElement = document.querySelector('#revenue-comparison');
+    
+    if (trendElement) {
+      const trendSign = trend >= 0 ? '+' : '';
+      trendElement.textContent = `${trendSign}${trend.toFixed(1)}%`;
+      trendElement.className = `text-${trend >= 0 ? 'green' : 'red'} d-inline-flex align-items-center lh-1`;
+    }
+    
+    if (comparisonElement) {
+      comparisonElement.textContent = `${formatMoney(currentRevenue)} vs ${formatMoney(previousRevenue)} (${previousPeriod})`;
+    }
+  }
+} 
