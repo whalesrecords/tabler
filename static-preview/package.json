@@ -1,0 +1,12 @@
+{
+  "name": "tabler-static-preview",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node convert.js && sass scss:dist/css --style compressed && cp -r js dist/ && cp -r static dist/ && cp -r shared dist/",
+    "dev": "sass scss:dist/css --watch"
+  },
+  "devDependencies": {
+    "sass": "^1.71.0"
+  }
+} 
