@@ -3,7 +3,7 @@
   "version": "1.2.0",
   "private": true,
   "scripts": {
-    "build": "pnpm run clean && pnpm run css && pnpm run js && pnpm run html",
+    "build": "pnpm run clean && pnpm run css && pnpm run js && pnpm run html && pnpm run copy-shared",
     "dev": "pnpm run clean && pnpm run watch",
     "watch": "concurrently \"pnpm run watch-html\" \"pnpm run watch-css\" \"pnpm run watch-js\"",
     "watch-html": "cross-env NODE_ENV=development eleventy --serve --port=3000 --incremental",
@@ -21,6 +21,7 @@
     "html": "pnpm run html-build && pnpm run html-prettify",
     "html-build": "eleventy",
     "html-prettify": "prettier --write \"dist/**/*.html\"",
+    "copy-shared": "shx cp -rf ../shared dist/",
     "svg-optimize": "svgo -f svg/brand --pretty",
     "unused-files": "node .build/unused-files.mjs",
     "download-images": "node .build/download-images.mjs",
