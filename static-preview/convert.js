@@ -21,10 +21,15 @@ function copyFiles(src, dest) {
 
     if (entry.isDirectory()) {
       if (!fs.existsSync(destPath)) {
-        fs.mkdirSync(destPath);
+        fs.mkdirSync(destPath, { recursive: true });
       }
       copyFiles(srcPath, destPath);
     } else {
+      // Créer le dossier parent s'il n'existe pas
+      const parentDir = path.dirname(destPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
       fs.copyFileSync(srcPath, destPath);
     }
   }
