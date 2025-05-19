@@ -7,6 +7,11 @@
   NPM_FLAGS = "--version"
 
 [[redirects]]
+  from = "/roster/*"
+  to = "/roster/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200 
