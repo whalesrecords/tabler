@@ -1,0 +1,258 @@
+---
+layout: roster
+title: Détails de l'artiste
+---
+
+<div class="container-xl">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="artist-image mb-3">
+                <img id="artistImage" src="" alt="Artist Image" class="img-fluid rounded">
+              </div>
+            </div>
+            <div class="col-md-8">
+              <h1 id="artistName" class="mb-2"></h1>
+              <div id="artistStats" class="mb-4">
+                <!-- Les statistiques seront ajoutées ici dynamiquement -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3 class="card-title">Albums</h3>
+        </div>
+        <div class="card-body">
+          <div class="row row-cards" id="albumsGrid">
+            <!-- Les albums seront ajoutés ici dynamiquement -->
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3 class="card-title">Top Tracks</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+              <thead>
+                <tr>
+                  <th>Titre</th>
+                  <th>Album</th>
+                  <th>Durée</th>
+                  <th>Popularité</th>
+                  <th>Streams</th>
+                  <th>Revenus</th>
+                </tr>
+              </thead>
+              <tbody id="topTracksList">
+                <!-- Les pistes seront ajoutées ici dynamiquement -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const artistId = urlParams.get('id');
+  const artistName = urlParams.get('name');
+
+  if (!artistId || !artistName) {
+    console.error('ID ou nom de l\'artiste manquant');
+    return;
+  }
+
+  displayArtistDetails(artistId, artistName);
+});
+
+async function displayArtistDetails(artistId, artistName) {
+  try {
+    // Récupérer les détails de l'artiste depuis Spotify
+    const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des détails de l\'artiste');
+    }
+
+    const artistDetails = await response.json();
+    
+    // Afficher les informations de base
+    document.getElementById('artistName').textContent = artistDetails.name;
+    document.getElementById('artistImage').src = artistDetails.images[0]?.url || '';
+
+    // Afficher les statistiques
+    const statsDiv = document.getElementById('artistStats');
+    statsDiv.innerHTML = `
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label">Popularité</label>
+                <div class="h3">${artistDetails.popularity}</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Followers</label>
+                <div class="h3">${artistDetails.followers.total.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label">Genres</label>
+                <div class="h3">${artistDetails.genres.join(', ') || 'Non spécifié'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Récupérer les albums de l'artiste
+    const albumsResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=50`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`
+      }
+    });
+
+    if (!albumsResponse.ok) {
+      throw new Error('Erreur lors de la récupération des albums');
+    }
+
+    const albumsData = await albumsResponse.json();
+    
+    // Afficher les albums
+    const albumsGrid = document.getElementById('albumsGrid');
+    albumsGrid.innerHTML = '';
+
+    albumsData.items.forEach(album => {
+      const albumCard = document.createElement('div');
+      albumCard.className = 'col-sm-6 col-lg-4';
+      albumCard.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              ${album.images[0] ? `
+                <img src="${album.images[0].url}" class="rounded me-3" width="50" height="50">
+              ` : ''}
+              <div>
+                <h3 class="card-title mb-1">
+                  <a href="album-details.html?id=${album.id}&artist=${encodeURIComponent(artistDetails.name)}">${album.name}</a>
+                </h3>
+                <div class="text-muted">${album.album_type} • ${album.release_date}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      albumsGrid.appendChild(albumCard);
+    });
+
+    // Récupérer les top tracks de l'artiste
+    const topTracksResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=FR`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`
+      }
+    });
+
+    if (!topTracksResponse.ok) {
+      throw new Error('Erreur lors de la récupération des top tracks');
+    }
+
+    const topTracksData = await topTracksResponse.json();
+    
+    // Afficher les top tracks
+    const tracksList = document.getElementById('topTracksList');
+    tracksList.innerHTML = '';
+
+    topTracksData.tracks.forEach(track => {
+      const trackData = getTrackCSVData(track.name, artistDetails.name);
+      
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${track.name}</td>
+        <td>${track.album.name}</td>
+        <td>${formatDuration(track.duration_ms)}</td>
+        <td>${track.popularity}</td>
+        <td>${formatNumber(trackData.streams || 0)}</td>
+        <td>${formatCurrency(trackData.revenue || 0)}</td>
+      `;
+      tracksList.appendChild(row);
+    });
+
+  } catch (error) {
+    console.error('Erreur:', error);
+    showError('Une erreur est survenue lors du chargement des détails de l\'artiste: ' + error.message);
+  }
+}
+
+function getTrackCSVData(trackName, artistName) {
+  const csvFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+  let streams = 0;
+  let revenue = 0;
+
+  csvFiles.forEach(file => {
+    if (file.data) {
+      const track = file.data.find(t => t.name === trackName && t.artist === artistName);
+      if (track) {
+        streams += parseInt(track.streams) || 0;
+        revenue += parseFloat(track.revenue) || 0;
+      }
+    }
+  });
+
+  return { streams, revenue };
+}
+
+function formatNumber(num) {
+  return new Intl.NumberFormat('fr-FR').format(num);
+}
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+}
+
+function formatDuration(ms) {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function showError(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast show';
+  toast.innerHTML = `
+    <div class="toast-header">
+      <strong class="me-auto">Erreur</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      ${message}
+    </div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+</script> 
