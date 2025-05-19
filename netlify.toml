@@ -1,10 +1,6 @@
 [build]
-  command = """
-    pnpm install && \
-    cd core && pnpm build && cd .. && \
-    cd preview && pnpm build
-  """
-  publish = "preview/dist"
+  command = "pnpm install && cd core && pnpm build && cd .. && cd static-preview && pnpm build"
+  publish = "static-preview/dist"
 
 [build.environment]
   NODE_VERSION = "20"
