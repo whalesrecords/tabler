@@ -1,6 +1,6 @@
 class SpotifyIntegration {
   constructor() {
-    this.clientId = 'YOUR_SPOTIFY_CLIENT_ID';
+    this.clientId = 'e7d21e22c5f24f05a446103890fb16cd';
     this.redirectUri = window.location.origin + '/callback';
     this.scopes = [
       'user-read-private',
