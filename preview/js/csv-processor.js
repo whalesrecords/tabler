@@ -4,7 +4,7 @@ let currentTemplate = null;
 let csvData = [];
 
 // Template definitions
-const templates = {
+window.templates = {
   tunecore: {
     date_column: "Sales Period",
     track_column: "Song Title",
