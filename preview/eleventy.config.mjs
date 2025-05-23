@@ -15,15 +15,16 @@ export default function (eleventyConfig) {
 	eleventyConfig.setInputDirectory("pages");
 	eleventyConfig.setOutputDirectory("dist");
 
-	eleventyConfig.setLayoutsDirectory("../../shared/layouts");
-	eleventyConfig.setIncludesDirectory("../../shared/includes");
-	eleventyConfig.setDataDirectory("../../shared/data");
+	eleventyConfig.setLayoutsDirectory("shared/layouts");
+	eleventyConfig.setIncludesDirectory("shared/includes");
+	eleventyConfig.setDataDirectory("shared/data");
 
 	eleventyConfig.addPassthroughCopy({
 		...getCopyList(),
 		"pages/favicon.ico": "favicon.ico",
 		"static": "static",
 		"js": "js",
+		"../dist": "dist",
 	});
 
 	eleventyConfig.addPlugin(EleventyRenderPlugin, {
@@ -213,6 +214,11 @@ export default function (eleventyConfig) {
 
 		return "now";
 	})
+
+	// Ajout d'un filtre pour les chemins absolus
+	eleventyConfig.addFilter("absolute", (path) => {
+		return path.startsWith('/') ? path : `/${path}`;
+	});
 
 	/**
 	 * Shortcodes
