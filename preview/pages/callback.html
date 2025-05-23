@@ -1,16 +1,20 @@
 ---
-layout: default
-title: Callback
+layout: shared/layouts/default.njk
+title: Authentification Spotify
+navbar: false
 ---
 
-<div class="container-xl">
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-body text-center">
-          <h3 class="card-title">Authentification en cours...</h3>
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Chargement...</span>
+<div class="page-wrapper">
+  <div class="page-body">
+    <div class="container-xl">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body text-center">
+              <h2>Authentification en cours...</h2>
+              <div class="spinner-border text-primary" role="status"></div>
+              <div id="debug" class="mt-3 text-muted small"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -20,16 +24,44 @@ title: Callback
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Récupérer le code depuis l'URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
+  const debug = document.getElementById('debug');
+  
+  try {
+    // Récupérer le token depuis l'URL
+    const hash = window.location.hash.substring(1);
+    debug.textContent = `Hash reçu: ${hash}`;
+    
+    const params = new URLSearchParams(hash);
+    const token = params.get('access_token');
+    const expiresIn = params.get('expires_in');
+    const tokenType = params.get('token_type');
 
-  if (code) {
-    // Rediriger vers l'endpoint d'authentification
-    window.location.href = `/api/auth/spotify?code=${code}`;
-  } else {
-    console.error('Aucun code trouvé dans l\'URL');
-    window.location.href = '/roster/';
+    if (token) {
+      debug.textContent += `\nToken reçu: ${token.substring(0, 10)}...`;
+      
+      // Sauvegarder le token dans le localStorage
+      localStorage.setItem('spotify_access_token', token);
+      localStorage.setItem('spotify_token_expires', Date.now() + (expiresIn * 1000));
+      localStorage.setItem('spotify_token_type', tokenType);
+      
+      debug.textContent += '\nToken sauvegardé, redirection...';
+      
+      // Rediriger vers la page roster
+      setTimeout(() => {
+        window.location.href = '/roster/';
+      }, 1000);
+    } else {
+      throw new Error('Aucun token trouvé dans l\'URL');
+    }
+  } catch (error) {
+    console.error('Erreur:', error);
+    document.querySelector('.card-body').innerHTML = `
+      <div class="alert alert-danger">
+        <h4>Une erreur est survenue lors de l'authentification</h4>
+        <p>${error.message}</p>
+        <a href="/roster/" class="btn btn-primary">Retourner à la page roster</a>
+      </div>
+    `;
   }
 });
 </script> 
