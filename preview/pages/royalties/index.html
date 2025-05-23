@@ -1,208 +1,79 @@
-<!doctype html>
-<!--
-* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
-* @version 1.2.0
-* @link https://tabler.io
-* Copyright 2018-2025 The Tabler Authors
-* Copyright 2018-2025 codecalm.net Paweł Kuna
-* Licensed under MIT (https://github.com/tabler/tabler/blob/master/LICENSE)
--->
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Analyse CSV - Tabler</title>
-    <!-- BEGIN GLOBAL MANDATORY STYLES -->
-    <link href="./dist/css/tabler.css?1747501744" rel="stylesheet" />
-    <!-- END GLOBAL MANDATORY STYLES -->
-    <!-- BEGIN PLUGINS STYLES -->
-    <link href="./dist/css/tabler-flags.css?1747501744" rel="stylesheet" />
-    <link href="./dist/css/tabler-socials.css?1747501744" rel="stylesheet" />
-    <link href="./dist/css/tabler-payments.css?1747501744" rel="stylesheet" />
-    <link href="./dist/css/tabler-vendors.css?1747501744" rel="stylesheet" />
-    <link href="./dist/css/tabler-marketing.css?1747501744" rel="stylesheet" />
-    <link href="./dist/css/tabler-themes.css?1747501744" rel="stylesheet" />
-    <!-- END PLUGINS STYLES -->
-    <!-- BEGIN DEMO STYLES -->
-    <link href="./preview/css/demo.css?1747501744" rel="stylesheet" />
-    <!-- END DEMO STYLES -->
-    <!-- BEGIN CUSTOM FONT -->
-    <style>
-      @import url("https://rsms.me/inter/inter.css");
-    </style>
-    <!-- END CUSTOM FONT -->
-    <!-- BEGIN APEXCHARTS -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css" rel="stylesheet" />
-    <!-- END APEXCHARTS -->
-  </head>
-  <body>
-    <!-- BEGIN GLOBAL THEME SCRIPT -->
-    <script src="./dist/js/tabler-theme.min.js?1747501744"></script>
-    <!-- END GLOBAL THEME SCRIPT -->
-    <div class="page">
-      <!-- BEGIN NAVBAR -->
-      <header class="navbar navbar-expand-md d-print-none">
-        <div class="container-xl">
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+---
+layout: nav.html
+title: Analyse CSV
+---
+<!-- Page header -->
+<div class="page-header d-print-none">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          Royautés
+        </h2>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <button class="btn btn-danger" onclick="clearAllFiles()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+              <path d="M4 7l16 0"></path>
+              <path d="M10 11l0 6"></path>
+              <path d="M14 11l0 6"></path>
+              <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"></path>
+              <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"></path>
+            </svg>
+            Effacer les données
           </button>
-          <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            <a href=".">
-              Analyse CSV
-            </a>
-          </h1>
+          <a href="/royalties-charts" class="btn btn-primary d-none d-sm-inline-block">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-bar" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+              <path d="M3 3m0 1a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1z"></path>
+              <path d="M12 8l4 4l-4 4"></path>
+              <path d="M8 12h8"></path>
+            </svg>
+            Voir les graphiques
+          </a>
         </div>
-      </header>
-      <!-- END NAVBAR -->
-
-      <div class="page-wrapper">
-        <!-- Page header -->
-        <div class="page-header d-print-none">
-          <div class="container-xl">
-            <div class="row g-2 align-items-center">
-              <div class="col">
-                <h2 class="page-title">
-                  Analyse CSV
-                </h2>
-              </div>
-            </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Page body -->
+<div class="page-body">
+  <div class="container-xl">
+    <!-- Filtres -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Filtres</h3>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Artiste</label>
+            <select class="form-select" id="artistFilter">
+              <option value="">Tous les artistes</option>
+            </select>
           </div>
-        </div>
-        <!-- Page body -->
-        <div class="page-body">
-          <div class="container-xl">
-            <div class="d-flex justify-content-end mb-3">
-              <a href="/royalties-charts" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-line" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                  <path d="M4 19l16 0" />
-                  <path d="M4 15l4 -6l4 2l4 -5l4 4" />
-                </svg>
-                Voir les graphiques
-              </a>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Import CSV</h3>
-              </div>
-              <div class="card-body">
-                <div id="importForms">
-                  <div class="import-form mb-3">
-                    <div class="row g-3">
-                      <div class="col-md-5">
-                        <div class="form-group">
-                          <label class="form-label">Template</label>
-                          <select class="form-select template-select">
-                            <option value="tunecore">Tunecore</option>
-                            <option value="bandcamp">Bandcamp</option>
-                            <option value="believe_uk">BELIEVE UK</option>
-                            <option value="believe">BELIEVE</option>
-                            <option value="tunecore_plus">Tunecore +</option>
-                            <option value="tunecore_real">TuneCore Real</option>
-                            <option value="dashgo">DashGo</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="col-md-5">
-                        <div class="form-group">
-                          <label class="form-label">Fichiers CSV</label>
-                          <input type="file" class="form-control csv-file" accept=".csv" multiple />
-                        </div>
-                      </div>
-                      <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-danger remove-import" style="display: none">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                            <path d="M4 7l16 0"></path>
-                            <path d="M10 11l0 6"></path>
-                            <path d="M14 11l0 6"></path>
-                            <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"></path>
-                            <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"></path>
-                          </svg>
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-3">
-                  <button class="btn btn-primary" id="addImportBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                      <path d="M12 5l0 14"></path>
-                      <path d="M5 12l14 0"></path>
-                    </svg>
-                    Ajouter un import
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3" id="results">
-              <!-- Boutons de contrôle -->
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="btn-group" role="group" aria-label="Affichage des résultats">
-                  <input type="radio" class="btn-check" name="viewType" id="viewArtist" value="artist" checked />
-                  <label class="btn btn-outline-primary" for="viewArtist">Par Artiste</label>
-                  <input type="radio" class="btn-check" name="viewType" value="period" id="viewPeriod" />
-                  <label class="btn btn-outline-primary" for="viewPeriod">Par Période</label>
-                  <input type="radio" class="btn-check" name="viewType" value="track" id="viewTrack" />
-                  <label class="btn btn-outline-primary" for="viewTrack">Par Track</label>
-                </div>
-                <button class="btn btn-success" id="exportBtn">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
-                    <path d="M7 11l5 5l5 -5"></path>
-                    <path d="M12 4l0 12"></path>
-                  </svg>
-                  Exporter CSV
-                </button>
-              </div>
-
-              <!-- Par Artiste -->
-              <div class="card mb-3" id="artistView">
-                <div class="card-header">
-                  <h3 class="card-title">Revenus par Artiste</h3>
-                </div>
-                <div class="card-body" id="artist-results">
-                  <div class="row row-cards" id="artist-cards"></div>
-                </div>
-              </div>
-
-              <!-- Par Période -->
-              <div class="card mb-3" id="periodView" style="display: none">
-                <div class="card-header">
-                  <h3 class="card-title">Revenus par Période</h3>
-                </div>
-                <div class="card-body" id="period-results">
-                  <div class="row row-cards" id="period-cards"></div>
-                </div>
-              </div>
-
-              <!-- Par Track -->
-              <div class="card mb-3" id="trackView" style="display: none">
-                <div class="card-header">
-                  <h3 class="card-title">Revenus par Track</h3>
-                </div>
-                <div class="card-body" id="track-results">
-                  <div class="row row-cards" id="track-cards"></div>
-                </div>
-              </div>
-            </div>
+          <div class="col-md-4">
+            <label class="form-label">Période</label>
+            <select class="form-select" id="periodFilter">
+              <option value="">Toutes les périodes</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Source</label>
+            <select class="form-select" id="sourceFilter">
+              <option value="">Toutes les sources</option>
+            </select>
           </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- BEGIN SCRIPTS -->
-    <script src="./dist/js/tabler.min.js?1747501744" defer></script>
-    <script src="./dist/js/demo.min.js?1747501744" defer></script>
-    <!-- END SCRIPTS -->
-    <!-- Include the CSV processor script -->
-    <script src="/static/js/csv-processor.js"></script>
-  </body>
-</html>
+<!-- BEGIN SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<script src="/js/csv-processor.js"></script>
+<!-- END SCRIPTS -->
