@@ -1,288 +1,172 @@
-<!doctype html>
-<!--
-* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
-* @version 1.2.0
-* @link https://tabler.io
-* Copyright 2018-2025 The Tabler Authors
-* Copyright 2018-2025 codecalm.net Paweł Kuna
-* Licensed under MIT (https://github.com/tabler/tabler/blob/master/LICENSE)
--->
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Roster - Tabler</title>
-    <!-- BEGIN GLOBAL MANDATORY STYLES -->
-    <link href="../dist/css/tabler.css?1747501744" rel="stylesheet" />
-    <!-- END GLOBAL MANDATORY STYLES -->
-    <!-- BEGIN PLUGINS STYLES -->
-    <link href="../dist/css/tabler-flags.css?1747501744" rel="stylesheet" />
-    <link href="../dist/css/tabler-socials.css?1747501744" rel="stylesheet" />
-    <link href="../dist/css/tabler-payments.css?1747501744" rel="stylesheet" />
-    <link href="../dist/css/tabler-vendors.css?1747501744" rel="stylesheet" />
-    <link href="../dist/css/tabler-marketing.css?1747501744" rel="stylesheet" />
-    <link href="../dist/css/tabler-themes.css?1747501744" rel="stylesheet" />
-    <!-- END PLUGINS STYLES -->
-    <!-- BEGIN DEMO STYLES -->
-    <link href="../preview/css/demo.css?1747501744" rel="stylesheet" />
-    <!-- END DEMO STYLES -->
-    <!-- BEGIN CUSTOM FONT -->
-    <style>
-      @import url("https://rsms.me/inter/inter.css");
-    </style>
-    <!-- END CUSTOM FONT -->
-  </head>
-  <body>
-    <!-- BEGIN GLOBAL THEME SCRIPT -->
-    <script src="../dist/js/tabler-theme.min.js?1747501744"></script>
-    <!-- END GLOBAL THEME SCRIPT -->
-    <div class="page">
-      <!-- BEGIN NAVBAR -->
-      <header class="navbar navbar-expand-md d-print-none">
-        <div class="container-xl">
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            <a href="..">
-              Roster
-            </a>
-          </h1>
-        </div>
-      </header>
-      <!-- END NAVBAR -->
-
-      <div class="page-wrapper">
-        <!-- Page header -->
-        <div class="page-header d-print-none">
-          <div class="container-xl">
-            <div class="row g-2 align-items-center">
-              <div class="col">
-                <h2 class="page-title">
-                  Roster
-                </h2>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Page body -->
-        <div class="page-body">
-          <div class="container-xl">
-            <div class="row">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Artistes</h3>
-                    <div class="card-actions">
-                      <a href="/roster/import.html" class="btn btn-primary me-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-upload" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
-                          <path d="M7 9l5 -5l5 5"></path>
-                          <path d="M12 4l0 12"></path>
-                        </svg>
-                        Importer CSV
-                      </a>
-                      <button class="btn btn-primary" onclick="loadArtists()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                          <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
-                          <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                        </svg>
-                        Actualiser
-                      </button>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="table-responsive">
-                      <table class="table table-vcenter card-table">
-                        <thead>
-                          <tr>
-                            <th>Artiste</th>
-                            <th>Streams</th>
-                            <th>Revenus</th>
-                            <th>Popularité</th>
-                            <th>Followers</th>
-                            <th>Genres</th>
-                            <th class="w-1"></th>
-                          </tr>
-                        </thead>
-                        <tbody id="artistsList">
-                          <!-- Les artistes seront ajoutés ici dynamiquement -->
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+---
+layout: nav.html
+title: Roster
+---
+<!-- Page header -->
+<div class="page-header d-print-none">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          Roster
+        </h2>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <a href="/royalties" class="btn btn-primary d-none d-sm-inline-block">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+              <path d="M5 12l14 0"></path>
+              <path d="M5 12l6 6"></path>
+              <path d="M5 12l6 -6"></path>
+            </svg>
+            Retour aux royalties
+          </a>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- BEGIN SCRIPTS -->
-    <script src="../dist/js/tabler.min.js?1747501744" defer></script>
-    <script src="../dist/js/demo.min.js?1747501744" defer></script>
-    <!-- END SCRIPTS -->
-    <script src="/js/spotify-integration.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Vérifier si un token est présent dans l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+<!-- Page body -->
+<div class="page-body">
+  <div class="container-xl">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Liste des Artistes</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-vcenter card-table">
+            <thead>
+              <tr>
+                <th>Artiste</th>
+                <th>Sources</th>
+                <th>Dernière période</th>
+                <th>Revenus totaux</th>
+              </tr>
+            </thead>
+            <tbody id="rosterTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        if (token) {
-          // Sauvegarder le token dans le localStorage
-          localStorage.setItem('spotify_access_token', token);
-          // Nettoyer l'URL
-          window.history.replaceState({}, document.title, '/roster/');
+<!-- BEGIN SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<script src="/js/csv-processor.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Récupérer les données du localStorage
+    const savedData = localStorage.getItem('csvData');
+    const savedTemplate = localStorage.getItem('csvTemplate');
+    
+    if (!savedData || !savedTemplate) {
+      document.getElementById('rosterTableBody').innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center">
+            <div class="alert alert-warning">
+              Aucune donnée disponible. Veuillez d'abord importer des données sur la page des royalties.
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    try {
+      // Décompresser les données
+      const data = JSON.parse(LZString.decompress(savedData));
+      
+      // Récupérer le template depuis l'objet templates
+      const templateType = savedTemplate;
+      const template = templates[templateType];
+      
+      if (!template) {
+        throw new Error(`Template non trouvé: ${templateType}`);
+      }
+
+      // Préparer les données pour le roster
+      const artistData = {};
+      
+      data.forEach(row => {
+        const artist = row[template.artist_column];
+        const period = getQuarter(row[template.date_column], template);
+        const source = template.source;
+        const revenue = parseFloat(row[template.revenue_column] || 0);
+
+        if (!artistData[artist]) {
+          artistData[artist] = {
+            sources: new Set(),
+            lastPeriod: period,
+            totalRevenue: 0
+          };
         }
 
-        // Charger les artistes
-        loadArtists();
+        artistData[artist].sources.add(source);
+        artistData[artist].totalRevenue += revenue;
+
+        // Mettre à jour la dernière période si nécessaire
+        if (new Date(period) > new Date(artistData[artist].lastPeriod)) {
+          artistData[artist].lastPeriod = period;
+        }
       });
 
-      async function loadArtists() {
-        try {
-          // 1. Charger les artistes depuis les CSV
-          const artistsFromCSV = getArtistsFromCSV();
-          console.log('Artistes depuis CSV:', artistsFromCSV);
+      // Trier les artistes par ordre alphabétique
+      const sortedArtists = Object.entries(artistData).sort((a, b) => a[0].localeCompare(b[0]));
 
-          if (artistsFromCSV.length === 0) {
-            const artistsList = document.getElementById('artistsList');
-            artistsList.innerHTML = `
-              <tr>
-                <td colspan="7" class="text-center">
-                  <div class="alert alert-warning">
-                    Aucun artiste trouvé dans les fichiers CSV. 
-                    <a href="/roster/import.html" class="alert-link">Importer des fichiers CSV</a>
-                  </div>
-                </td>
-              </tr>
-            `;
-            return;
-          }
+      // Mettre à jour le tableau
+      const tbody = document.getElementById('rosterTableBody');
+      tbody.innerHTML = '';
 
-          // 2. Afficher les artistes avec leurs données CSV
-          displayArtists(artistsFromCSV);
+      sortedArtists.forEach(([artist, data]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${artist}</td>
+          <td>${Array.from(data.sources).sort().join(', ')}</td>
+          <td>${data.lastPeriod}</td>
+          <td>${formatAmount(data.totalRevenue)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-          // 3. Enrichir avec Spotify si un token est disponible
-          const token = localStorage.getItem('spotify_access_token');
-          if (token) {
-            const enrichedArtists = await enrichArtistsWithSpotify(artistsFromCSV);
-            displayArtists(enrichedArtists);
-          }
-        } catch (error) {
-          console.error('Erreur lors du chargement des artistes:', error);
-          const artistsList = document.getElementById('artistsList');
-          artistsList.innerHTML = `
-            <tr>
-              <td colspan="7" class="text-center">
-                <div class="alert alert-danger">
-                  Une erreur est survenue lors du chargement des artistes. Veuillez réessayer.
-                </div>
-              </td>
-            </tr>
-          `;
-        }
-      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      document.getElementById('rosterTableBody').innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center">
+            <div class="alert alert-danger">
+              Erreur lors du chargement des données: ${error.message}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  });
 
-      function getArtistsFromCSV() {
-        try {
-          const csvFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
-          console.log('Structure des fichiers CSV:', csvFiles);
-          
-          const artists = new Map(); // Utiliser une Map pour éviter les doublons
+  // Fonction pour formater les montants
+  function formatAmount(value) {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(value);
+  }
 
-          csvFiles.forEach(file => {
-            console.log('Traitement du fichier:', file);
-            console.log('Type de file.data:', typeof file.data);
-            
-            if (file.data && file.data.byArtist) {
-              // Parcourir les données par artiste
-              Object.entries(file.data.byArtist).forEach(([artistName, artistData]) => {
-                console.log('Traitement artiste:', artistName, artistData);
-                
-                // Séparer les artistes multiples
-                const artistNames = artistName
-                  .split(/[&,x]/) // Séparer par &, , ou x
-                  .map(name => name.trim()) // Enlever les espaces
-                  .filter(name => name.length > 0); // Enlever les noms vides
-
-                console.log('Artistes séparés:', artistNames);
-
-                // Traiter chaque artiste séparément
-                artistNames.forEach(singleArtistName => {
-                  if (!artists.has(singleArtistName)) {
-                    artists.set(singleArtistName, {
-                      name: singleArtistName,
-                      streams: 0,
-                      revenue: 0,
-                      tracks: []
-                    });
-                  }
-                  
-                  const artist = artists.get(singleArtistName);
-                  
-                  // Répartir les streams et revenus entre les artistes
-                  const shareCount = artistNames.length;
-                  if (artistData.streams) {
-                    const streams = parseInt(artistData.streams) || 0;
-                    artist.streams += Math.floor(streams / shareCount);
-                    console.log(`Streams pour ${singleArtistName}: ${artist.streams} (part de ${streams}/${shareCount})`);
-                  }
-                  if (artistData.revenue) {
-                    try {
-                      // Convertir la chaîne de caractères en nombre et gérer les formats de devise
-                      const revenueStr = artistData.revenue.toString().replace(/[^0-9.,]/g, '').replace(',', '.');
-                      const revenue = parseFloat(revenueStr) || 0;
-                      artist.revenue += revenue / shareCount;
-                      console.log(`Revenus pour ${singleArtistName}: ${artist.revenue} (part de ${revenue}/${shareCount})`);
-                    } catch (error) {
-                      console.error('Erreur lors du traitement des revenus:', error, artistData.revenue);
-                    }
-                  }
-                  
-                  // Ajouter les morceaux de l'artiste
-                  if (file.data.byTrack) {
-                    Object.entries(file.data.byTrack).forEach(([trackName, trackData]) => {
-                      // Vérifier si l'artiste est dans la liste des artistes du morceau
-                      const trackArtists = trackData.artist
-                        .split(/[&,x]/)
-                        .map(name => name.trim())
-                        .filter(name => name.length > 0);
-
-                      if (trackArtists.includes(singleArtistName)) {
-                        try {
-                          // Convertir les revenus du morceau
-                          const trackRevenueStr = trackData.revenue.toString().replace(/[^0-9.,]/g, '').replace(',', '.');
-                          const trackRevenue = parseFloat(trackRevenueStr) || 0;
-                          artist.tracks.push({
-                            name: trackName,
-                            streams: Math.floor(parseInt(trackData.streams) / trackArtists.length) || 0,
-                            revenue: trackRevenue / trackArtists.length,
-                            collaborators: trackArtists.filter(name => name !== singleArtistName)
-                          });
-                          console.log(`Morceau ajouté pour ${singleArtistName}: ${trackName}`);
-                        } catch (error) {
-                          console.error('Erreur lors du traitement du morceau:', error, trackData);
-                        }
-                      }
-                    });
-                  }
-                });
-              });
-            }
-          });
-
-          return Array.from(artists.values());
-        } catch (error) {
-          console.error('Erreur lors de la récupération des artistes depuis CSV:', error);
-          return [];
-        }
-      }
-    </script>
-  </body>
-</html> 
+  // Fonction pour obtenir le trimestre
+  function getQuarter(dateStr) {
+    const date = new Date(dateStr);
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    
+    const months = [
+      'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
+      'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
+    ];
+    
+    return `${months[month]} ${year}`;
+  }
+</script>
+<!-- END SCRIPTS --> 
