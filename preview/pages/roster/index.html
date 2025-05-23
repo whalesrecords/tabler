@@ -44,6 +44,7 @@ title: Roster
                 <th>Sources</th>
                 <th>Dernière période</th>
                 <th>Revenus totaux</th>
+                <th class="w-1"></th>
               </tr>
             </thead>
             <tbody id="rosterTableBody">
@@ -67,7 +68,7 @@ title: Roster
     if (!savedData || !savedTemplate) {
       document.getElementById('rosterTableBody').innerHTML = `
         <tr>
-          <td colspan="4" class="text-center">
+          <td colspan="5" class="text-center">
             <div class="alert alert-warning">
               Aucune donnée disponible. Veuillez d'abord importer des données sur la page des royalties.
             </div>
@@ -129,6 +130,16 @@ title: Roster
           <td>${Array.from(data.sources).sort().join(', ')}</td>
           <td>${data.lastPeriod}</td>
           <td>${formatAmount(data.totalRevenue)}</td>
+          <td>
+            <a href="/artist/${encodeURIComponent(artist)}" class="btn btn-primary btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                <path d="M5 12l14 0"></path>
+                <path d="M13 18l6 -6"></path>
+                <path d="M13 6l6 6"></path>
+              </svg>
+            </a>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -137,7 +148,7 @@ title: Roster
       console.error('Erreur lors du chargement des données:', error);
       document.getElementById('rosterTableBody').innerHTML = `
         <tr>
-          <td colspan="4" class="text-center">
+          <td colspan="5" class="text-center">
             <div class="alert alert-danger">
               Erreur lors du chargement des données: ${error.message}
             </div>
