@@ -1,7 +1,11 @@
 class SpotifyIntegration {
   constructor() {
+    // TODO: Remplacer par votre Client ID Spotify
+    // 1. Créez une application sur https://developer.spotify.com/dashboard
+    // 2. Copiez le Client ID de votre application
+    // 3. Configurez l'URL de redirection dans les paramètres de l'application
     this.clientId = 'e7d21e22c5f24f05a446103890fb16cd';
-    this.redirectUri = window.location.origin + '/callback';
+    this.redirectUri = 'https://localhost:3000/callback';
     this.scopes = [
       'user-read-private',
       'user-read-email',
@@ -12,13 +16,26 @@ class SpotifyIntegration {
 
   async getSpotifyToken() {
     try {
+      console.log('Vérification du token...');
       const token = localStorage.getItem('spotify_access_token');
+      console.log('Token trouvé:', token ? 'Oui' : 'Non');
+      
       if (token) {
+        console.log('Utilisation du token existant');
         return token;
       }
 
-      const authUrl = `https://accounts.spotify.com/authorize?client_id=${this.clientId}&response_type=token&redirect_uri=${encodeURIComponent(this.redirectUri)}&scope=${encodeURIComponent(this.scopes.join(' '))}`;
-      window.location.href = authUrl;
+      console.log('Redirection vers la page d\'autorisation');
+      // Construire l'URL d'autorisation
+      const authUrl = new URL('https://accounts.spotify.com/authorize');
+      authUrl.searchParams.append('client_id', this.clientId);
+      authUrl.searchParams.append('response_type', 'code');
+      authUrl.searchParams.append('redirect_uri', this.redirectUri);
+      authUrl.searchParams.append('scope', this.scopes.join(' '));
+      authUrl.searchParams.append('show_dialog', 'true');
+
+      // Rediriger vers la page d'autorisation
+      window.location.href = authUrl.toString();
     } catch (error) {
       console.error('Erreur lors de l\'obtention du token:', error);
       throw error;

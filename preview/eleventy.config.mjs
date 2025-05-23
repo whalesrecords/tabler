@@ -15,14 +15,15 @@ export default function (eleventyConfig) {
 	eleventyConfig.setInputDirectory("pages");
 	eleventyConfig.setOutputDirectory("dist");
 
-	eleventyConfig.setLayoutsDirectory("shared/layouts");
-	eleventyConfig.setIncludesDirectory("shared/includes");
-	eleventyConfig.setDataDirectory("shared/data");
+	eleventyConfig.setLayoutsDirectory("../../shared/layouts");
+	eleventyConfig.setIncludesDirectory("../../shared/includes");
+	eleventyConfig.setDataDirectory("../../shared/data");
 
 	eleventyConfig.addPassthroughCopy({
 		...getCopyList(),
 		"pages/favicon.ico": "favicon.ico",
 		"static": "static",
+		"js": "js",
 	});
 
 	eleventyConfig.addPlugin(EleventyRenderPlugin, {
