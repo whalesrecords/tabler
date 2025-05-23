@@ -1,0 +1,224 @@
+---
+layout: roster
+title: Import CSV
+---
+
+<div class="container-xl">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Import des fichiers CSV</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-12">
+              <div class="alert alert-info">
+                <h4 class="alert-title">Format attendu</h4>
+                <p>Les fichiers CSV doivent contenir les colonnes suivantes :</p>
+                <ul>
+                  <li><code>artist</code> : Nom de l'artiste</li>
+                  <li><code>track</code> : Titre du morceau</li>
+                  <li><code>streams</code> : Nombre de streams</li>
+                  <li><code>revenue</code> : Revenus générés</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-12">
+              <div id="dropZone" class="border-2 border-dashed rounded-3 p-4 text-center">
+                <div class="mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-upload" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
+                    <path d="M7 9l5 -5l5 5"></path>
+                    <path d="M12 4l0 12"></path>
+                  </svg>
+                </div>
+                <h3>Glissez-déposez vos fichiers CSV ici</h3>
+                <p class="text-muted">ou</p>
+                <input type="file" id="fileInput" accept=".csv" multiple class="d-none">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                  Sélectionner des fichiers
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-4">
+            <div class="col-12">
+              <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                  <thead>
+                    <tr>
+                      <th>Fichier</th>
+                      <th>Statut</th>
+                      <th>Artistes</th>
+                      <th>Morceaux</th>
+                      <th class="w-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="filesList">
+                    <!-- Les fichiers importés seront listés ici -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="d-flex">
+            <a href="/roster/" class="btn btn-link">Retour à la liste</a>
+            <button class="btn btn-primary ms-auto" onclick="window.location.href='/roster/'">
+              Voir les artistes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const filesList = document.getElementById('filesList');
+
+  // Gérer le drag & drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-primary');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-primary');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  // Gérer la sélection de fichiers
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+  });
+
+  // Charger les fichiers déjà importés
+  loadImportedFiles();
+});
+
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    if (file.name.endsWith('.csv')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvData = parseCSV(e.target.result);
+          saveCSVFile(file.name, csvData);
+          addFileToList(file.name, csvData);
+        } catch (error) {
+          console.error('Erreur lors du parsing du CSV:', error);
+          showError(file.name, 'Format invalide');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      showError(file.name, 'Format non supporté');
+    }
+  });
+}
+
+function parseCSV(csvText) {
+  const lines = csvText.split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  
+  // Vérifier les colonnes requises
+  const requiredColumns = ['artist', 'track', 'streams', 'revenue'];
+  const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+  
+  if (missingColumns.length > 0) {
+    throw new Error(`Colonnes manquantes : ${missingColumns.join(', ')}`);
+  }
+
+  const data = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim()) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index];
+      });
+      data.push(row);
+    }
+  }
+
+  return data;
+}
+
+function saveCSVFile(filename, data) {
+  const csvFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+  csvFiles.push({
+    name: filename,
+    data: data
+  });
+  localStorage.setItem('csvFiles', JSON.stringify(csvFiles));
+}
+
+function addFileToList(filename, data) {
+  const row = document.createElement('tr');
+  const artistCount = new Set(data.map(row => row.artist)).size;
+  
+  row.innerHTML = `
+    <td>${filename}</td>
+    <td><span class="badge bg-success">Importé</span></td>
+    <td>${artistCount}</td>
+    <td>${data.length}</td>
+    <td>
+      <button class="btn btn-danger btn-sm" onclick="removeFile('${filename}')">
+        Supprimer
+      </button>
+    </td>
+  `;
+  
+  document.getElementById('filesList').appendChild(row);
+}
+
+function showError(filename, message) {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${filename}</td>
+    <td><span class="badge bg-danger">Erreur</span></td>
+    <td colspan="2">${message}</td>
+    <td></td>
+  `;
+  document.getElementById('filesList').appendChild(row);
+}
+
+function removeFile(filename) {
+  const csvFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+  const updatedFiles = csvFiles.filter(file => file.name !== filename);
+  localStorage.setItem('csvFiles', JSON.stringify(updatedFiles));
+  loadImportedFiles();
+}
+
+function loadImportedFiles() {
+  const filesList = document.getElementById('filesList');
+  filesList.innerHTML = '';
+  
+  const csvFiles = JSON.parse(localStorage.getItem('csvFiles') || '[]');
+  csvFiles.forEach(file => {
+    addFileToList(file.name, file.data);
+  });
+}
+</script>
+
+<style>
+.border-dashed {
+  border-style: dashed !important;
+}
+</style> 

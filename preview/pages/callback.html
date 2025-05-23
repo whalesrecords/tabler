@@ -1,0 +1,35 @@
+---
+layout: default
+title: Callback
+---
+
+<div class="container-xl">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body text-center">
+          <h3 class="card-title">Authentification en cours...</h3>
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Chargement...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Récupérer le code depuis l'URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+
+  if (code) {
+    // Rediriger vers l'endpoint d'authentification
+    window.location.href = `/api/auth/spotify?code=${code}`;
+  } else {
+    console.error('Aucun code trouvé dans l\'URL');
+    window.location.href = '/roster/';
+  }
+});
+</script> 
